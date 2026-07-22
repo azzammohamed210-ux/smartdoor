@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Tajawal', 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f8fafc;
+}
+
+[dir="rtl"] {
+  font-family: 'Tajawal', 'Cairo', 'Noto Naskh Arabic', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+div[data-bolt-badge],
+a[href*="bolt.new"],
+[class*="bolt-badge"],
+[id*="bolt-badge"],
+[class*="bolt-watermark"],
+[id*="bolt-watermark"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
