@@ -221,7 +221,7 @@ export async function fetchWorkOrders(techId?: string): Promise<WorkOrder[]> {
       const techs = await fetchTechnicians();
       const prods = await fetchProducts();
       return (data as any[]).map(r => {
-        const gps = r.gps_lat && r.gps_lng ? `https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}` : undefined;
+        const gps = r.gps_link || (r.gps_lat && r.gps_lng ? `https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}` : undefined);
         return {
           ...r,
           technician_name: techs.find(t => t.id === r.technician_id)?.name,
@@ -337,6 +337,7 @@ export async function createWorkOrder(input: {
       client_location_name: input.client_location_name,
       gps_lat: gps.lat,
       gps_lng: gps.lng,
+      gps_link: gps.link,
       route_number: routeNum,
       status: "pending",
       notes: input.notes,
@@ -443,6 +444,7 @@ export async function bulkCreateOrders(
         client_phone: r.client_phone || "",
         gps_lat: gps.lat,
         gps_lng: gps.lng,
+        gps_link: gps.link,
         route_number: r.route_number,
         status: "pending",
         notes,
