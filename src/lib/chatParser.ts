@@ -184,47 +184,63 @@ export interface RoutedOrder extends ParsedOrder {
   route_number: number;
 }
 
+export function parseSingleOrder(rawText: string): ParsedOrder {
+  const phone = extractPhone(rawText);
+  const gps = extractGpsLink(rawText);
+  const extractedName = extractName(rawText);
+  const name = extractedName || DEFAULT_NAME_AR;
+  const product = extractProduct(rawText);
+  const time = extractPreferredTime(rawText);
+  return {
+    client_name: name,
+    client_phone: phone,
+    gps_link: gps.link,
+    gps_lat: gps.lat,
+    gps_lng: gps.lng,
+    product_detail: product,
+    preferred_time: time,
+    raw: rawText,
+  };
+}
+
+export function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 24 * 60;
+  let h = 0, m = 0;
+  const lower = timeStr.toLowerCase();
+  const isPM = /مساء|pm|مغرب|عصر/.test(lower);
+  const isAM = /صباح|am|فجر|صبح/.test(lower);
+  const hm = timeStr.match(/(\d{1,2})[:：](\d{2})/);
+  const hOnly = timeStr.match(/(\d{1,2})\s*(?:صباحا?|مساء?|am|pm)?/);
+  if (hm) { h = parseInt(hm[1], 10); m = parseInt(hm[2], 10); }
+  else if (hOnly) { h = parseInt(hOnly[1], 10); m = 0; }
+  else return 24 * 60;
+  if (isPM && h < 12) h += 12;
+  if (isAM && h === 12) h = 0;
+  if (!isPM && !isAM && h >= 0 && h < 6) h += 12;
+  return h * 60 + m;
+}
+
 export function dispatchOrders(
   parsed: ParsedOrder[],
   technicians: { id: string; name: string }[],
 ): RoutedOrder[] {
-  const withCoords = parsed.filter(p => p.gps_lat && p.gps_lng);
-  const withoutCoords = parsed.filter(p => !p.gps_lat || !p.gps_lng);
+  const BARKA_LAT = 23.6846;
+  const BARKA_LNG = 58.1902;
 
-  const visited = new Set<number>();
-  const ordered: ParsedOrder[] = [];
+  const sorted = [...parsed].sort((a, b) => {
+    const ta = timeToMinutes(a.preferred_time);
+    const tb = timeToMinutes(b.preferred_time);
+    if (ta !== tb) return ta - tb;
+    const da = a.gps_lat && a.gps_lng ? haversine(BARKA_LAT, BARKA_LNG, a.gps_lat, a.gps_lng) : Infinity;
+    const db = b.gps_lat && b.gps_lng ? haversine(BARKA_LAT, BARKA_LNG, b.gps_lat, b.gps_lng) : Infinity;
+    return db - da;
+  });
 
-  while (visited.size < withCoords.length) {
-    let bestIdx = -1;
-    let bestDist = Infinity;
-    let lastLat = 23.5880;
-    let lastLng = 58.3829;
-    if (ordered.length > 0) {
-      const last = ordered[ordered.length - 1];
-      lastLat = last.gps_lat!;
-      lastLng = last.gps_lng!;
-    }
-    for (let i = 0; i < withCoords.length; i++) {
-      if (visited.has(i)) continue;
-      const p = withCoords[i];
-      const d = haversine(lastLat, lastLng, p.gps_lat!, p.gps_lng!);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = i;
-      }
-    }
-    if (bestIdx >= 0) {
-      visited.add(bestIdx);
-      ordered.push(withCoords[bestIdx]);
-    } else break;
-  }
-
-  const allOrdered = [...ordered, ...withoutCoords];
   const techCount = technicians.length || 1;
   const techBuckets: ParsedOrder[][] = Array.from({ length: techCount }, () => []);
   const routeCounters: number[] = Array.from({ length: techCount }, () => 0);
 
-  allOrdered.forEach((order, idx) => {
+  sorted.forEach((order, idx) => {
     const techIdx = idx % techCount;
     techBuckets[techIdx].push(order);
   });

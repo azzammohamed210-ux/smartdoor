@@ -124,6 +124,24 @@ export interface Strings {
   bulkImportParsing: string;
   bulkImportDispatching: string;
   pastePhone: string;
+  addNewOrderCard: string;
+  analyzeCard: string;
+  cardRawPlaceholder: string;
+  cardAnalyzed: string;
+  cardPending: string;
+  noCards: string;
+  selectTechniciansTitle: string;
+  selectTechniciansHint: string;
+  noActiveTechs: string;
+  confirmDispatch: string;
+  cardPhone: string;
+  cardProduct: string;
+  cardTime: string;
+  cardLocation: string;
+  deleteCard: string;
+  editCard: string;
+  cardsCount: string;
+  draftSaved: string;
   colName: string;
   colPhone: string;
   colLocation: string;
@@ -298,6 +316,24 @@ export const translations: Record<Lang, Strings> = {
     bulkImportParsing: "جاري التحليل...",
     bulkImportDispatching: "جاري التوزيع والإنشاء...",
     pastePhone: "لصق الهاتف",
+    addNewOrderCard: "+ إضافة أمر عمل جديد",
+    analyzeCard: "تحليل",
+    cardRawPlaceholder: "الصق نص العميل هنا... (الاسم، الهاتف، رابط الخريطة، المنتج، الوقت)",
+    cardAnalyzed: "تم التحليل",
+    cardPending: "بانتظار التحليل",
+    noCards: "لا توجد بطاقات بعد. اضغط \"إضافة أمر عمل جديد\" للبدء.",
+    selectTechniciansTitle: "اختيار الفنيين للتوزيع",
+    selectTechniciansHint: "حدد الفنيين (يمكن اختيار 1 أو 2 أو 3)",
+    noActiveTechs: "لا يوجد فنيون نشطون. أضف فنيين أولاً.",
+    confirmDispatch: "توزيع وإنشاء الطلبات",
+    cardPhone: "الهاتف",
+    cardProduct: "المنتج",
+    cardTime: "الوقت",
+    cardLocation: "الموقع",
+    deleteCard: "حذف",
+    editCard: "تعديل",
+    cardsCount: "بطاقات",
+    draftSaved: "تم الحفظ تلقائياً",
     colName: "الاسم",
     colPhone: "الهاتف",
     colLocation: "الموقع",
@@ -471,6 +507,24 @@ export const translations: Record<Lang, Strings> = {
     bulkImportParsing: "Parsing...",
     bulkImportDispatching: "Dispatching & creating...",
     pastePhone: "Paste Phone",
+    addNewOrderCard: "+ Add New Work Order",
+    analyzeCard: "Analyze",
+    cardRawPlaceholder: "Paste customer text here... (name, phone, map link, product, time)",
+    cardAnalyzed: "Analyzed",
+    cardPending: "Pending analysis",
+    noCards: "No cards yet. Click \"Add New Work Order\" to start.",
+    selectTechniciansTitle: "Select Technicians for Dispatch",
+    selectTechniciansHint: "Select technicians (1, 2, or 3)",
+    noActiveTechs: "No active technicians. Add technicians first.",
+    confirmDispatch: "Dispatch & Create Orders",
+    cardPhone: "Phone",
+    cardProduct: "Product",
+    cardTime: "Time",
+    cardLocation: "Location",
+    deleteCard: "Delete",
+    editCard: "Edit",
+    cardsCount: "cards",
+    draftSaved: "Auto-saved",
     colName: "Name",
     colPhone: "Phone",
     colLocation: "Location",

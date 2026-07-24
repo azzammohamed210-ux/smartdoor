@@ -1,9 +1,16 @@
-import { useState } from "react";
-import { X, ClipboardPaste, Zap, CheckCircle2, AlertCircle, MapPin } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Plus, Zap, CheckCircle2, AlertCircle, MapPin, Phone, Clock, Package, Trash2, Edit2, Check, UserCheck } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { Technician } from "../types";
-import { parseChatText, dispatchOrders, type ParsedOrder, type RoutedOrder } from "../lib/chatParser";
+import { parseSingleOrder, dispatchOrders, type ParsedOrder, type RoutedOrder } from "../lib/chatParser";
 import { bulkCreateOrders, toArabicNumber } from "../lib/storage";
+
+interface OrderCard {
+  id: string;
+  rawText: string;
+  parsed: ParsedOrder | null;
+  analyzed: boolean;
+}
 
 interface Props {
   lang: Lang;
@@ -13,65 +20,91 @@ interface Props {
   onDispatched: () => void;
 }
 
+const LS_DRAFT_CARDS = "sd_import_draft_cards";
+
+function loadDraftCards(): OrderCard[] {
+  try {
+    const raw = localStorage.getItem(LS_DRAFT_CARDS);
+    if (!raw) return [];
+    return JSON.parse(raw) as OrderCard[];
+  } catch { return []; }
+}
+
+function saveDraftCards(cards: OrderCard[]) {
+  try { localStorage.setItem(LS_DRAFT_CARDS, JSON.stringify(cards)); } catch { /* ignore */ }
+}
+
 export default function BulkImportModal({ lang, t, technicians, onClose, onDispatched }: Props) {
-  const [rawText, setRawText] = useState("");
-  const [parsed, setParsed] = useState<ParsedOrder[] | null>(null);
-  const [routed, setRouted] = useState<RoutedOrder[] | null>(null);
-  const [parsing, setParsing] = useState(false);
+  const [cards, setCards] = useState<OrderCard[]>(loadDraftCards);
   const [dispatching, setDispatching] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [showTechSelect, setShowTechSelect] = useState(false);
+  const [selectedTechIds, setSelectedTechIds] = useState<string[]>([]);
 
-  const handleParse = () => {
-    if (!rawText.trim()) return;
-    setParsing(true);
-    setError("");
-    setTimeout(() => {
-      try {
-        const result = parseChatText(rawText);
-        if (result.length === 0) {
-          setError(t.noParsedOrders);
-          setParsed([]);
-        } else {
-          const dispatched = dispatchOrders(
-            result,
-            technicians.map(tc => ({ id: tc.id, name: tc.name })),
-          );
-          setParsed(result);
-          setRouted(dispatched);
-        }
-      } catch (e: any) {
-        setError(e.message || "Error");
-      } finally {
-        setParsing(false);
-      }
-    }, 300);
-  };
+  useEffect(() => { saveDraftCards(cards); }, [cards]);
 
-  const handlePastePhone = async (idx: number) => {
-    try {
-      const clip = await navigator.clipboard.readText();
-      const phone = clip.replace(/[^\d+]/g, "").trim();
-      if (phone && routed) {
-        const updated = [...routed];
-        updated[idx].client_phone = phone;
-        setRouted(updated);
-      }
-    } catch {
-      setError(lang === "ar" ? "تعذر الوصول إلى الحافظة" : "Clipboard access denied");
-    }
-  };
+  const activeTechs = technicians.filter(tc => tc.active);
 
-  const handleDispatch = async () => {
-    if (!routed) return;
-    const missingPhone = routed.filter(r => !r.client_phone.trim());
-    if (missingPhone.length > 0) {
-      setError(lang === "ar" ? `يوجد ${missingPhone.length} طلب بدون رقم هاتف` : `${missingPhone.length} orders missing phone`);
+  const addCard = useCallback(() => {
+    const id = crypto.randomUUID();
+    setCards(prev => [...prev, { id, rawText: "", parsed: null, analyzed: false }]);
+  }, []);
+
+  const removeCard = useCallback((id: string) => {
+    setCards(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  const updateCardText = useCallback((id: string, text: string) => {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, rawText: text, analyzed: false, parsed: null } : c));
+  }, []);
+
+  const analyzeCard = useCallback((id: string) => {
+    setCards(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      if (!c.rawText.trim()) return c;
+      const parsed = parseSingleOrder(c.rawText);
+      return { ...c, parsed, analyzed: true };
+    }));
+  }, []);
+
+  const editCard = useCallback((id: string) => {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, analyzed: false } : c));
+  }, []);
+
+  const analyzedCards = cards.filter(c => c.analyzed && c.parsed);
+
+  const handleDispatchClick = () => {
+    if (analyzedCards.length === 0) {
+      setError(lang === "ar" ? "حلل بطاقة واحدة على الأقل أولاً" : "Analyze at least one card first");
       return;
     }
+    setError("");
+    setSelectedTechIds([]);
+    setShowTechSelect(true);
+  };
+
+  const toggleTech = (id: string) => {
+    setSelectedTechIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id)
+        : prev.length >= 3 ? prev : [...prev, id]
+    );
+  };
+
+  const handleConfirmDispatch = async () => {
+    if (selectedTechIds.length === 0) return;
+    const selectedTechs = activeTechs.filter(tc => selectedTechIds.includes(tc.id));
+    if (selectedTechs.length === 0) return;
+
+    setShowTechSelect(false);
     setDispatching(true);
     setError("");
     try {
+      const parsedOrders = analyzedCards.map(c => c.parsed!);
+      const routed = dispatchOrders(
+        parsedOrders,
+        selectedTechs.map(tc => ({ id: tc.id, name: tc.name })),
+      );
       await bulkCreateOrders(routed.map(r => ({
         client_name: r.client_name,
         client_phone: r.client_phone,
@@ -83,6 +116,7 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
         technician_id: r.technician_id,
         route_number: r.route_number,
       })));
+      saveDraftCards([]);
       setSuccess(true);
       setTimeout(() => { onDispatched(); onClose(); }, 1500);
     } catch (e: any) {
@@ -110,99 +144,121 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
               <CheckCircle2 className="h-16 w-16 text-emerald-500" />
               <p className="mt-4 text-lg font-semibold text-slate-800">{t.bulkImportSuccess}</p>
             </div>
-          ) : !routed ? (
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">{t.bulkImportPlaceholder}</label>
-                <textarea
-                  value={rawText}
-                  onChange={(e) => setRawText(e.target.value)}
-                  rows={10}
-                  className={inputCls + " font-mono text-sm"}
-                  placeholder={t.bulkImportPlaceholder}
-                />
-              </div>
-              {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                  <AlertCircle className="h-4 w-4" />
-                  {error}
-                </div>
-              )}
-              <button
-                onClick={handleParse}
-                disabled={parsing || !rawText.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
-              >
-                {parsing ? (
-                  <>{t.bulkImportParsing}</>
-                ) : (
-                  <>
-                    <Zap className="h-5 w-5" />
-                    {t.bulkImportParse}
-                  </>
-                )}
-              </button>
-            </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <MapPin className="h-4 w-4 text-blue-600" />
-                {t.bulkImportPreview} ({routed.length})
-              </div>
+              {/* Draft saved indicator */}
+              {cards.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                  <Check className="h-3.5 w-3.5" />
+                  {t.draftSaved}
+                </div>
+              )}
 
-              <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-xs text-slate-500">
-                      <th className="px-2 py-2 text-right font-medium">{t.colName}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t.colPhone}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t.colLocation}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t.colProduct}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t.colTime}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t.colTech}</th>
-                      <th className="px-2 py-2 text-center font-medium">{t.colRoute}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {routed.map((r, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="px-2 py-2 text-slate-800">{r.client_name || "-"}</td>
-                        <td className="px-2 py-2">
-                          {r.client_phone ? (
-                            <span className="text-slate-700" dir="ltr">{r.client_phone}</span>
-                          ) : (
-                            <button
-                              onClick={() => handlePastePhone(idx)}
-                              className="flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-100"
-                            >
-                              <ClipboardPaste className="h-3 w-3" />
-                              {t.pastePhone}
-                            </button>
-                          )}
-                        </td>
-                        <td className="px-2 py-2">
-                          {r.gps_link ? (
-                            <a href={r.gps_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:underline">
-                              <MapPin className="h-3 w-3" />
-                              GPS
-                            </a>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
-                        </td>
-                        <td className="px-2 py-2 text-slate-600">{r.product_detail || "-"}</td>
-                        <td className="px-2 py-2 text-slate-600">{r.preferred_time || "-"}</td>
-                        <td className="px-2 py-2 text-slate-700">{r.technician_name}</td>
-                        <td className="px-2 py-2 text-center">
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                            {toArabicNumber(r.route_number)}
+              {/* Cards list */}
+              {cards.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 py-12 text-center">
+                  <Package className="h-10 w-10 text-slate-300" />
+                  <p className="mt-3 text-sm text-slate-400">{t.noCards}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cards.map((card, idx) => (
+                    <div key={card.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition hover:ring-blue-200">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-xs font-bold text-blue-600">
+                            {toArabicNumber(idx + 1)}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          {card.analyzed ? (
+                            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                              <CheckCircle2 className="h-3 w-3" />
+                              {t.cardAnalyzed}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                              <Clock className="h-3 w-3" />
+                              {t.cardPending}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeCard(card.id)}
+                          className="rounded-lg p-1.5 text-rose-400 transition hover:bg-rose-50"
+                          title={t.deleteCard}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {card.analyzed && card.parsed ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                              <div>
+                                <p className="text-xs text-slate-400">{t.cardPhone}</p>
+                                <p className="text-sm font-medium text-slate-800" dir="ltr">{card.parsed.client_phone || "-"}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                              <Package className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                              <div>
+                                <p className="text-xs text-slate-400">{t.cardProduct}</p>
+                                <p className="text-sm font-medium text-slate-800">{card.parsed.product_detail || "-"}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                              <div>
+                                <p className="text-xs text-slate-400">{t.cardTime}</p>
+                                <p className="text-sm font-medium text-slate-800">{card.parsed.preferred_time || "-"}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                              <div>
+                                <p className="text-xs text-slate-400">{t.cardLocation}</p>
+                                {card.parsed.gps_link ? (
+                                  <a href={card.parsed.gps_link} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:underline">
+                                    GPS
+                                  </a>
+                                ) : (
+                                  <p className="text-sm font-medium text-slate-400">-</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => editCard(card.id)}
+                            className="flex items-center gap-1 text-xs font-medium text-blue-600 transition hover:text-blue-700"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            {t.editCard}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <textarea
+                            value={card.rawText}
+                            onChange={(e) => updateCardText(card.id, e.target.value)}
+                            rows={3}
+                            className={inputCls + " text-sm"}
+                            placeholder={t.cardRawPlaceholder}
+                          />
+                          <button
+                            onClick={() => analyzeCard(card.id)}
+                            disabled={!card.rawText.trim()}
+                            className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-50"
+                          >
+                            <Zap className="h-4 w-4" />
+                            {t.analyzeCard}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {error && (
                 <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -211,32 +267,91 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
+              {/* Add card button */}
+              <button
+                onClick={addCard}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-200 py-3 font-medium text-blue-600 transition hover:border-blue-400 hover:bg-blue-50"
+              >
+                <Plus className="h-5 w-5" />
+                {t.addNewOrderCard}
+              </button>
+
+              {/* Dispatch button */}
+              {analyzedCards.length > 0 && (
                 <button
-                  onClick={() => { setRouted(null); setParsed(null); setError(""); }}
-                  className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50"
-                >
-                  {t.back}
-                </button>
-                <button
-                  onClick={handleDispatch}
+                  onClick={handleDispatchClick}
                   disabled={dispatching}
-                  className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
                 >
                   {dispatching ? (
                     <>{t.bulkImportDispatching}</>
                   ) : (
                     <>
                       <Zap className="h-5 w-5" />
-                      {t.bulkImportDispatch}
+                      {t.confirmDispatch} ({toArabicNumber(analyzedCards.length)} {t.cardsCount})
                     </>
                   )}
                 </button>
-              </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Technician selection modal */}
+      {showTechSelect && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-bold text-slate-900">{t.selectTechniciansTitle}</h3>
+            </div>
+            <p className="mb-4 text-sm text-slate-500">{t.selectTechniciansHint}</p>
+
+            {activeTechs.length === 0 ? (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-600">{t.noActiveTechs}</p>
+            ) : (
+              <div className="space-y-2">
+                {activeTechs.map(tc => (
+                  <label
+                    key={tc.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${
+                      selectedTechIds.includes(tc.id)
+                        ? "border-blue-400 bg-blue-50"
+                        : "border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTechIds.includes(tc.id)}
+                      onChange={() => toggleTech(tc.id)}
+                      className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="font-medium text-slate-800">{tc.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setShowTechSelect(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={handleConfirmDispatch}
+                disabled={selectedTechIds.length === 0}
+                className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-2.5 font-semibold text-white shadow-md transition hover:shadow-lg disabled:opacity-50"
+              >
+                <Zap className="h-4 w-4" />
+                {t.confirmDispatch}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
