@@ -1,56 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="14" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <linearGradient id="boxGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a0e1a"/>
-      <stop offset="100%" stop-color="#111827"/>
-    </linearGradient>
-    <linearGradient id="borderGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#22d3ee"/>
-      <stop offset="50%" stop-color="#3b82f6"/>
-      <stop offset="100%" stop-color="#1e75e6"/>
-    </linearGradient>
-    <linearGradient id="textGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#22d3ee"/>
-      <stop offset="100%" stop-color="#60a5fa"/>
-    </linearGradient>
-  </defs>
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 450" width="100%" height="100%">
   <!-- Background -->
-  <rect width="512" height="512" rx="96" fill="url(#boxGrad)"/>
-
-  <!-- Glowing border box -->
-  <rect x="56" y="156" width="400" height="200" rx="20" fill="none" stroke="url(#borderGrad)" stroke-width="4" filter="url(#glow)" opacity="0.9"/>
-  <rect x="56" y="156" width="400" height="200" rx="20" fill="none" stroke="url(#borderGrad)" stroke-width="2.5"/>
-
-  <!-- Lightning bolt -->
-  <g transform="translate(96,196)" filter="url(#glowStrong)">
-    <path d="M28 0 L8 36 L22 36 L14 68 L44 28 L28 28 Z" fill="#fbbf24" stroke="#fde68a" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect width="400" height="450" fill="#ffffff" rx="40"/>
+  
+  <!-- Outer Door Frame (Dark Navy/Black) -->
+  <path d="M 115 30 H 285 V 340 H 265 V 50 H 135 V 340 H 115 Z" fill="#0b1b2b"/>
+  
+  <!-- Inner Fingerprint Icon -->
+  <g fill="none" stroke="#0b1b2b" stroke-width="4" stroke-linecap="round">
+    <path d="M 185 130 C 185 118 215 118 215 130 C 215 150 185 150 185 170" />
+    <path d="M 191 135 C 191 126 209 126 209 135 C 209 148 191 148 191 160" />
+    <path d="M 197 140 C 197 134 203 134 203 140 C 203 145 197 148 197 155" />
   </g>
-  <g transform="translate(96,196)">
-    <path d="M28 0 L8 36 L22 36 L14 68 L44 28 L28 28 Z" fill="#fbbf24" stroke="#fde68a" stroke-width="1.5" stroke-linejoin="round"/>
-  </g>
-
-  <!-- SMARTDOOR text -->
-  <g filter="url(#glow)">
-    <text x="288" y="280" font-size="52" font-weight="700" letter-spacing="4"
-          text-anchor="middle" fill="url(#textGrad)"
-          font-family="'Courier New', Courier, monospace">SMARTDOOR</text>
-  </g>
-  <text x="288" y="280" font-size="52" font-weight="700" letter-spacing="4"
-        text-anchor="middle" fill="url(#textGrad)"
-        font-family="'Courier New', Courier, monospace">SMARTDOOR</text>
+  
+  <!-- Handle/Lock Side Bar (Gold Accent) -->
+  <rect x="245" y="60" width="9" height="235" fill="#d4af37" />
+  
+  <!-- Smart Handle Mechanism (Dark) -->
+  <rect x="222" y="180" width="30" height="10" rx="3" fill="#0b1b2b"/>
+  <rect x="242" y="190" width="10" height="30" rx="2" fill="#0b1b2b"/>
+  
+  <!-- SMART DOOR Text -->
+  <text x="200" y="410" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="34" fill="#0b1b2b" text-anchor="middle" letter-spacing="4">SMART DOOR</text>
 </svg>
