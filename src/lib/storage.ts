@@ -340,7 +340,17 @@ export async function completeOrder(id: string, details: {
   final_photo_url?: string;
   id_image_url?: string;
 }): Promise<void> {
-  await updateWorkOrder(id, { ...details, status: "completed" });
+  const now = new Date().toISOString();
+  await updateWorkOrder(id, { ...details, status: "completed", archived: true, archived_at: now });
+}
+
+export async function deleteOrder(id: string): Promise<void> {
+  try {
+    const { error } = await supabase.from("work_orders").delete().eq("id", id);
+    if (!error) return;
+  } catch { /* fall through */ }
+  const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
+  lsSet(LS_ORDERS, orders.filter(o => o.id !== id));
 }
 
 export async function cancelOrder(id: string, reason: string): Promise<void> {

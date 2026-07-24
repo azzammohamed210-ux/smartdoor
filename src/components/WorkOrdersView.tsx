@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import { Plus, Phone, MessageCircle, MapPin, Play, CheckCircle2, Search } from "lucide-react";
+import { Plus, Phone, MessageCircle, MapPin, Play, CheckCircle2, Search, Trash2 } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
 import OrderDetailsModal from "./OrderDetailsModal";
-import { toArabicNumber } from "../lib/storage";
+import { toArabicNumber, deleteOrder } from "../lib/storage";
 
 interface Props {
   lang: Lang;
@@ -167,6 +167,20 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                       >
                         {o.status === "pending" ? <Play className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                         {o.status === "pending" ? t.startWork : t.completeOrder}
+                      </button>
+                    )}
+                    {o.status === "cancelled" && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(t.confirmDeleteOrder)) {
+                            deleteOrder(o.id).then(onRefresh);
+                          }
+                        }}
+                        className="flex h-9 items-center gap-1.5 rounded-lg bg-red-500 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-red-600"
+                        title={t.deleteOrder}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        {t.deleteOrder}
                       </button>
                     )}
                   </div>

@@ -168,6 +168,8 @@ export interface Strings {
   route: string;
   routeColors: string;
   tapClusterHint: string;
+  deleteOrder: string;
+  confirmDeleteOrder: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -340,6 +342,8 @@ export const translations: Record<Lang, Strings> = {
     route: "المسار",
     routeColors: "ألوان المسارات",
     tapClusterHint: "اضغط على مجموعة لعرض الطلبات الفردية",
+    deleteOrder: "حذف نهائي",
+    confirmDeleteOrder: "هل أنت متأكد من الحذف النهائي لهذا الأمر؟ لا يمكن التراجع عن هذا الإجراء.",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -510,6 +514,8 @@ export const translations: Record<Lang, Strings> = {
     route: "Route",
     routeColors: "Route Colors",
     tapClusterHint: "Tap a cluster to reveal individual orders",
+    deleteOrder: "Delete Permanently",
+    confirmDeleteOrder: "Are you sure you want to permanently delete this order? This action cannot be undone.",
   },
 };
 
