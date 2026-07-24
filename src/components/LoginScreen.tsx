@@ -6,19 +6,29 @@ import { login, type MockUser } from "../lib/storage";
 interface Props {
   lang: Lang;
   t: Strings;
+  deactivated?: boolean;
   onLogin: (u: MockUser) => void;
 }
 
-export default function LoginScreen({ lang, t, onLogin }: Props) {
+export default function LoginScreen({ lang, t, deactivated, onLogin }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const u = login(email.trim(), password);
-    if (u) onLogin(u);
-    else setError(t.loginError);
+    setError("");
+    setLoading(true);
+    try {
+      const u = await login(email.trim(), password);
+      if (u) onLogin(u);
+      else setError(t.loginError);
+    } catch {
+      setError(t.loginError);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -60,12 +70,14 @@ export default function LoginScreen({ lang, t, onLogin }: Props) {
               />
             </div>
           </div>
+          {deactivated && !error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{t.accountDeactivated}</p>}
           {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
           <button
             type="submit"
-            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-2.5 font-semibold text-white shadow-lg transition hover:shadow-xl"
+            disabled={loading}
+            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-2.5 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
           >
-            {t.signIn}
+            {loading ? "..." : t.signIn}
           </button>
           <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
             <p className="mb-1 font-semibold text-slate-600">Demo accounts:</p>

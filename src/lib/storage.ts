@@ -34,12 +34,14 @@ function lsSet(key: string, val: unknown) {
 export function getCurrentUser(): MockUser | null {
   return lsGet<MockUser | null>(LS_USER, null);
 }
-export function login(email: string, password: string): MockUser | null {
+export async function login(email: string, password: string): Promise<MockUser | null> {
   const mock = MOCK_USERS.find(x => x.email === email && x.password === password);
   if (mock) { lsSet(LS_USER, mock); return mock; }
   const techs = lsGet<Technician[]>(LS_TECHS, []);
   const tech = techs.find(t => t.email === email && t.password === password && t.active);
   if (tech) {
+    const active = await isTechnicianActive(email);
+    if (!active) return null;
     const u: MockUser = { email: tech.email, password, name: tech.name, role: "technician", technicianEmail: tech.email };
     lsSet(LS_USER, u);
     return u;
@@ -94,13 +96,35 @@ export async function addTechnician(input: { name: string; email: string; passwo
 }
 
 export async function deleteTechnician(id: string): Promise<void> {
+  let dbOk = false;
   try {
     const { error } = await supabase.from("technicians").update({ active: false }).eq("id", id);
-    if (!error) return;
+    if (!error) dbOk = true;
   } catch { /* fall through */ }
   const techs = lsGet<Technician[]>(LS_TECHS, []);
   const idx = techs.findIndex(t => t.id === id);
   if (idx >= 0) { techs[idx].active = false; lsSet(LS_TECHS, techs); }
+  else if (dbOk) {
+    // DB update succeeded but technician not in local cache — add a tombstone
+    techs.push({ id, name: "", email: "", active: false });
+    lsSet(LS_TECHS, techs);
+  }
+}
+
+export async function isTechnicianActive(email: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("technicians")
+      .select("active")
+      .eq("email", email)
+      .maybeSingle();
+    if (!error && data) return data.active === true;
+  } catch { /* fall through */ }
+  const techs = lsGet<Technician[]>(LS_TECHS, []);
+  const tech = techs.find(t => t.email === email);
+  if (tech) return tech.active;
+  // Not in DB or local — treat built-in mock technicians as active
+  return MOCK_USERS.some(u => u.email === email && u.role === "technician");
 }
 
 // ---- Products CRUD ----

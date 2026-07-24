@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { LogOut, DoorOpen } from "lucide-react";
 import { translations, type Lang } from "./locales";
-import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, checkAndArchive, type MockUser } from "./lib/storage";
+import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, checkAndArchive, isTechnicianActive, type MockUser } from "./lib/storage";
 import type { Technician, Product, WorkOrder } from "./types";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import LoginScreen from "./components/LoginScreen";
@@ -25,6 +25,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [deactivated, setDeactivated] = useState(false);
 
   const t = translations[lang];
   const isAdmin = user?.role === "admin";
@@ -63,13 +64,31 @@ export default function App() {
     setUser(null);
   };
 
+  // Real-time session validation: if a technician's account is deactivated
+  // in the database while they're logged in, immediately terminate their session.
+  useEffect(() => {
+    if (!user || user.role !== "technician") return;
+    let cancelled = false;
+    const checkActive = async () => {
+      const active = await isTechnicianActive(user.technicianEmail || user.email);
+      if (!cancelled && !active) {
+        logout();
+        setUser(null);
+        setDeactivated(true);
+      }
+    };
+    checkActive();
+    const interval = setInterval(checkActive, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user]);
+
   if (!user) {
     return (
       <>
         <div className="fixed top-4 ltr:right-4 rtl:left-4 z-50">
           <LanguageSwitcher lang={lang} setLang={setLang} />
         </div>
-        <LoginScreen lang={lang} t={t} onLogin={(u) => setUser(u)} />
+        <LoginScreen lang={lang} t={t} deactivated={deactivated} onLogin={(u) => { setDeactivated(false); setUser(u); }} />
       </>
     );
   }

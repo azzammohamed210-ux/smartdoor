@@ -15,6 +15,7 @@ export interface Strings {
   password: string;
   signIn: string;
   loginError: string;
+  accountDeactivated: string;
   welcome: string;
   roleAdmin: string;
   roleTechnician: string;
@@ -188,6 +189,7 @@ export const translations: Record<Lang, Strings> = {
     password: "كلمة المرور",
     signIn: "دخول",
     loginError: "بيانات الدخول غير صحيحة",
+    accountDeactivated: "تم إلغاء تفعيل حسابك من قبل الإدارة",
     welcome: "مرحباً",
     roleAdmin: "مدير",
     roleTechnician: "فني",
@@ -360,6 +362,7 @@ export const translations: Record<Lang, Strings> = {
     password: "Password",
     signIn: "Sign In",
     loginError: "Invalid credentials",
+    accountDeactivated: "Your account has been deactivated by administration",
     welcome: "Welcome",
     roleAdmin: "Admin",
     roleTechnician: "Technician",
