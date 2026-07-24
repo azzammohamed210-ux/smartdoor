@@ -66,6 +66,7 @@ export interface Strings {
   call: string;
   whatsapp: string;
   map: string;
+  noLocationLink: string;
   orderNumber: string;
   status: string;
   technician: string;
@@ -261,6 +262,7 @@ export const translations: Record<Lang, Strings> = {
     call: "اتصال",
     whatsapp: "واتساب",
     map: "الخريطة",
+    noLocationLink: "لا يوجد رابط موقع لهذا الطلب",
     orderNumber: "رقم الأمر",
     status: "الحالة",
     technician: "الفني",
@@ -455,6 +457,7 @@ export const translations: Record<Lang, Strings> = {
     call: "Call",
     whatsapp: "WhatsApp",
     map: "Map",
+    noLocationLink: "No location link for this order",
     orderNumber: "Order #",
     status: "Status",
     technician: "Technician",

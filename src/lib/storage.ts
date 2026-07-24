@@ -374,6 +374,9 @@ export async function updateWorkOrder(id: string, patch: Partial<WorkOrder>): Pr
 export async function completeOrder(id: string, details: {
   client_name: string;
   product_id: string;
+  product_ids?: string[];
+  product_name?: string;
+  product_code?: string;
   amount: number;
   warranty_months: number;
   payment_method: string;

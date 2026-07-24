@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Check, MapPin, Upload, ImageIcon, Crosshair, XCircle } from "lucide-react";
+import { X, Check, MapPin, Upload, ImageIcon, Crosshair, XCircle, Package } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { checklistItems, warrantyOptions } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
@@ -26,6 +26,7 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
   const [clientLocationName, setClientLocationName] = useState(order?.client_location_name || "");
   const [gpsLink, setGpsLink] = useState(order?.gps_link || "");
   const [productId, setProductId] = useState(order?.product_id || "");
+  const [productIds, setProductIds] = useState<string[]>(order?.product_ids || (order?.product_id ? [order.product_id] : []));
   const [amount, setAmount] = useState(order?.amount?.toString() || "");
   const [warranty, setWarranty] = useState(order?.warranty_months?.toString() || "12");
   const [paymentMethod, setPaymentMethod] = useState(order?.payment_method || "cash");
@@ -87,6 +88,10 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
     }
   };
 
+  const toggleProduct = (id: string) => {
+    setProductIds((prev) => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  };
+
   const handleSave = async () => {
     setError("");
     if (!clientPhone.trim()) { setError(t.clientPhone); return; }
@@ -103,9 +108,16 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
         onRefresh();
         onClose();
       } else if (order) {
+        const selectedProducts = products.filter(p => productIds.includes(p.id));
+        const combinedName = selectedProducts.map(p => p.name_ar).join(" + ");
+        const combinedCode = selectedProducts.map(p => p.code).join(" + ");
+        const primaryProductId = productIds[0] || "";
         const updated: Partial<WorkOrder> = {
           client_name: clientName,
-          product_id: productId,
+          product_id: primaryProductId,
+          product_ids: productIds,
+          product_name: combinedName || undefined,
+          product_code: combinedCode || undefined,
           amount: parseFloat(amount) || 0,
           warranty_months: parseInt(warranty) || 0,
           payment_method: paymentMethod,
@@ -117,7 +129,10 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
         };
         await completeOrder(order.id, {
           client_name: clientName,
-          product_id: productId,
+          product_id: primaryProductId,
+          product_ids: productIds,
+          product_name: combinedName || undefined,
+          product_code: combinedCode || undefined,
           amount: parseFloat(amount) || 0,
           warranty_months: parseInt(warranty) || 0,
           payment_method: paymentMethod,
@@ -132,8 +147,8 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
           ...order,
           ...updated,
           status: "completed",
-          product_name: products.find(p => p.id === productId)?.name_ar,
-          product_code: products.find(p => p.id === productId)?.code,
+          product_name: combinedName || undefined,
+          product_code: combinedCode || undefined,
           technician_name: technicians.find(tc => tc.id === (technicianId || order.technician_id))?.name,
         } as WorkOrder;
         setPendingOrder(fullOrder);
@@ -261,15 +276,38 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
                   )}
                 </div>
 
-                {/* Product */}
+                {/* Product - multi-select checkboxes */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">{t.product}</label>
-                  <select value={productId} onChange={(e) => setProductId(e.target.value)} className={inputCls}>
-                    <option value="">{t.selectProduct}</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name_ar} ({p.code})</option>
-                    ))}
-                  </select>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {products.map((p) => {
+                      const checked = productIds.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => toggleProduct(p.id)}
+                          className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                            checked ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-600"
+                          }`}
+                        >
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${checked ? "bg-blue-600 text-white" : "bg-slate-200"}`}>
+                            {checked && <Check className="h-3.5 w-3.5" />}
+                          </span>
+                          <span className="flex flex-col items-start">
+                            <span>{p.name_ar}</span>
+                            <span className="text-xs text-slate-400">{p.code}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {productIds.length > 0 && (
+                    <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                      <Package className="h-3.5 w-3.5" />
+                      {products.filter(p => productIds.includes(p.id)).map(p => p.name_ar).join(" + ")}
+                    </div>
+                  )}
                 </div>
 
                 {/* Amount - decimal keyboard + Warranty dropdown */}

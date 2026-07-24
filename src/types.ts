@@ -44,6 +44,7 @@ export interface WorkOrder {
   route_number?: number;
   status: OrderStatus;
   product_id?: string;
+  product_ids?: string[];
   product_name?: string;
   product_code?: string;
   amount: number;

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Plus, Phone, MessageCircle, MapPin, Play, CheckCircle2, Search, Trash2 } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
@@ -24,6 +24,12 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [techFilter, setTechFilter] = useState<string>("all");
+  const [toast, setToast] = useState<string>("");
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  }, []);
 
   const filtered = useMemo(() => {
     let r = orders;
@@ -149,17 +155,19 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                     >
                       <MessageCircle className="h-4 w-4" />
                     </a>
-                    {o.gps_link && (
-                      <a
-                        href={o.gps_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 transition hover:bg-amber-100"
-                        title={t.map}
-                      >
-                        <MapPin className="h-4 w-4" />
-                      </a>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (o.gps_link) {
+                          window.open(o.gps_link, "_blank", "noreferrer");
+                        } else {
+                          showToast(t.noLocationLink);
+                        }
+                      }}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 transition hover:bg-amber-100"
+                      title={t.map}
+                    >
+                      <MapPin className="h-4 w-4" />
+                    </button>
                     {o.status !== "completed" && o.status !== "cancelled" && (
                       <button
                         onClick={() => setSelected(o)}
@@ -195,6 +203,12 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl bg-slate-800 px-5 py-3 text-sm font-medium text-white shadow-xl">
+          {toast}
         </div>
       )}
 
