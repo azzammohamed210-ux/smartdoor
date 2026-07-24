@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, Plus, Zap, CheckCircle2, AlertCircle, MapPin, Phone, Clock, Package, Trash2, Edit2, Check, UserCheck } from "lucide-react";
+import { X, Plus, Zap, CheckCircle2, AlertCircle, MapPin, Phone, Clock, Package, Trash2, Edit2, Check, UserCheck, Loader2, Sparkles } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { Technician } from "../types";
 import { parseSingleOrder, dispatchOrders, type ParsedOrder, type RoutedOrder } from "../lib/chatParser";
 import { bulkCreateOrders, toArabicNumber } from "../lib/storage";
+import { supabase } from "../lib/supabaseClient";
 
 interface OrderCard {
   id: string;
   rawText: string;
   parsed: ParsedOrder | null;
   analyzed: boolean;
+  analyzing: boolean;
+  parseSource: "ai" | "fallback" | null;
 }
 
 interface Props {
@@ -26,7 +29,8 @@ function loadDraftCards(): OrderCard[] {
   try {
     const raw = localStorage.getItem(LS_DRAFT_CARDS);
     if (!raw) return [];
-    return JSON.parse(raw) as OrderCard[];
+    const cards = JSON.parse(raw) as OrderCard[];
+    return cards.map(c => ({ ...c, analyzing: false }));
   } catch { return []; }
 }
 
@@ -48,7 +52,7 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
 
   const addCard = useCallback(() => {
     const id = crypto.randomUUID();
-    setCards(prev => [...prev, { id, rawText: "", parsed: null, analyzed: false }]);
+    setCards(prev => [...prev, { id, rawText: "", parsed: null, analyzed: false, analyzing: false, parseSource: null }]);
   }, []);
 
   const removeCard = useCallback((id: string) => {
@@ -56,17 +60,48 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
   }, []);
 
   const updateCardText = useCallback((id: string, text: string) => {
-    setCards(prev => prev.map(c => c.id === id ? { ...c, rawText: text, analyzed: false, parsed: null } : c));
+    setCards(prev => prev.map(c => c.id === id ? { ...c, rawText: text, analyzed: false, parsed: null, parseSource: null } : c));
   }, []);
 
-  const analyzeCard = useCallback((id: string) => {
-    setCards(prev => prev.map(c => {
-      if (c.id !== id) return c;
-      if (!c.rawText.trim()) return c;
-      const parsed = parseSingleOrder(c.rawText);
-      return { ...c, parsed, analyzed: true };
-    }));
-  }, []);
+  const analyzeCard = useCallback(async (id: string) => {
+    const card = cards.find(c => c.id === id);
+    if (!card || !card.rawText.trim()) return;
+
+    setCards(prev => prev.map(c => c.id === id ? { ...c, analyzing: true } : c));
+
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-parse-order", {
+        body: { text: card.rawText },
+      });
+
+      if (error || !data) throw new Error("AI parse failed");
+
+      const source: "ai" | "fallback" = data.source === "ai" ? "ai" : "fallback";
+      const parsed: ParsedOrder = {
+        client_name: parseSingleOrder(card.rawText).client_name,
+        client_phone: data.phone || "",
+        gps_link: data.location_url || undefined,
+        gps_lat: undefined,
+        gps_lng: undefined,
+        product_detail: data.product || undefined,
+        preferred_time: data.appointment_time || undefined,
+        raw: card.rawText,
+      };
+
+      if (data.location_url) {
+        const coords = parseSingleOrder(card.rawText);
+        if (coords.gps_lat && coords.gps_lng) {
+          parsed.gps_lat = coords.gps_lat;
+          parsed.gps_lng = coords.gps_lng;
+        }
+      }
+
+      setCards(prev => prev.map(c => c.id === id ? { ...c, parsed, analyzed: true, analyzing: false, parseSource: source } : c));
+    } catch {
+      const parsed = parseSingleOrder(card.rawText);
+      setCards(prev => prev.map(c => c.id === id ? { ...c, parsed, analyzed: true, analyzing: false, parseSource: "fallback" } : c));
+    }
+  }, [cards]);
 
   const editCard = useCallback((id: string) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, analyzed: false } : c));
@@ -190,7 +225,11 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
                         </button>
                       </div>
 
-                      {card.analyzed && card.parsed ? (
+                      {card.analyzing ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                        </div>
+                      ) : card.analyzed && card.parsed ? (
                         <div className="space-y-2">
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
@@ -250,7 +289,7 @@ export default function BulkImportModal({ lang, t, technicians, onClose, onDispa
                             disabled={!card.rawText.trim()}
                             className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-50"
                           >
-                            <Zap className="h-4 w-4" />
+                            <Sparkles className="h-4 w-4" />
                             {t.analyzeCard}
                           </button>
                         </div>

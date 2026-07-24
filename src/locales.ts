@@ -142,6 +142,9 @@ export interface Strings {
   editCard: string;
   cardsCount: string;
   draftSaved: string;
+  aiAnalyzing: string;
+  aiSource: string;
+  fallbackSource: string;
   colName: string;
   colPhone: string;
   colLocation: string;
@@ -334,6 +337,9 @@ export const translations: Record<Lang, Strings> = {
     editCard: "تعديل",
     cardsCount: "بطاقات",
     draftSaved: "تم الحفظ تلقائياً",
+    aiAnalyzing: "جاري التحليل بالذكاء الاصطناعي...",
+    aiSource: "تحليل ذكي",
+    fallbackSource: "تحليل محلي",
     colName: "الاسم",
     colPhone: "الهاتف",
     colLocation: "الموقع",
@@ -525,6 +531,9 @@ export const translations: Record<Lang, Strings> = {
     editCard: "Edit",
     cardsCount: "cards",
     draftSaved: "Auto-saved",
+    aiAnalyzing: "AI analyzing...",
+    aiSource: "AI parsed",
+    fallbackSource: "Local parse",
     colName: "Name",
     colPhone: "Phone",
     colLocation: "Location",
