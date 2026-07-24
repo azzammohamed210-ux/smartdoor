@@ -9,13 +9,6 @@ export interface MockUser {
   technicianEmail?: string;
 }
 
-export const MOCK_USERS: MockUser[] = [
-  { email: "admin@smartdoor.test", password: "SmartDoor@2026", name: "مدير النظام", role: "admin" },
-  { email: "tech1@smartdoor.test", password: "Tech@2026", name: "محمد إيهاب محمد", role: "technician", technicianEmail: "tech1@smartdoor.test" },
-  { email: "tech2@smartdoor.test", password: "Tech@2026", name: "احمد سامي عبد المنعم", role: "technician", technicianEmail: "tech2@smartdoor.test" },
-  { email: "tech3@smartdoor.test", password: "Tech@2026", name: "باسم مصطفي", role: "technician", technicianEmail: "tech3@smartdoor.test" },
-];
-
 const LS_USER = "sd_current_user";
 const LS_ORDERS = "sd_orders";
 const LS_TECHS = "sd_technicians";
@@ -35,8 +28,35 @@ export function getCurrentUser(): MockUser | null {
   return lsGet<MockUser | null>(LS_USER, null);
 }
 export async function login(email: string, password: string): Promise<MockUser | null> {
-  const mock = MOCK_USERS.find(x => x.email === email && x.password === password);
-  if (mock) { lsSet(LS_USER, mock); return mock; }
+  // Check admin credentials from the database
+  try {
+    const { data: admin, error: adminErr } = await supabase
+      .from("admins")
+      .select("email, password, name, active")
+      .eq("email", email)
+      .maybeSingle();
+    if (!adminErr && admin && admin.active && admin.password === password) {
+      const u: MockUser = { email: admin.email, password, name: admin.name, role: "admin" };
+      lsSet(LS_USER, u);
+      return u;
+    }
+  } catch { /* fall through */ }
+
+  // Check technician credentials from the database
+  try {
+    const { data: tech, error: techErr } = await supabase
+      .from("technicians")
+      .select("id, email, password, name, active")
+      .eq("email", email)
+      .maybeSingle();
+    if (!techErr && tech && tech.active && tech.password === password) {
+      const u: MockUser = { email: tech.email, password, name: tech.name, role: "technician", technicianEmail: tech.email };
+      lsSet(LS_USER, u);
+      return u;
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: check local cache (for offline / first-load scenarios)
   const techs = lsGet<Technician[]>(LS_TECHS, []);
   const tech = techs.find(t => t.email === email && t.password === password && t.active);
   if (tech) {
@@ -123,8 +143,7 @@ export async function isTechnicianActive(email: string): Promise<boolean> {
   const techs = lsGet<Technician[]>(LS_TECHS, []);
   const tech = techs.find(t => t.email === email);
   if (tech) return tech.active;
-  // Not in DB or local — treat built-in mock technicians as active
-  return MOCK_USERS.some(u => u.email === email && u.role === "technician");
+  return false;
 }
 
 // ---- Products CRUD ----

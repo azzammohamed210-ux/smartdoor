@@ -51,7 +51,7 @@ export default function LoginScreen({ lang, t, deactivated, onLogin }: Props) {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(""); }}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-2.5 text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                placeholder="admin@smartdoor.test"
+                placeholder="email@example.com"
                 required
               />
             </div>
@@ -79,11 +79,6 @@ export default function LoginScreen({ lang, t, deactivated, onLogin }: Props) {
           >
             {loading ? "..." : t.signIn}
           </button>
-          <div className="mt-6 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-            <p className="mb-1 font-semibold text-slate-600">Demo accounts:</p>
-            <p>admin@smartdoor.test / SmartDoor@2026</p>
-            <p>tech1@smartdoor.test / Tech@2026</p>
-          </div>
         </form>
       </div>
     </div>

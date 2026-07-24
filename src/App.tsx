@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { LogOut, DoorOpen } from "lucide-react";
+import { supabase } from "./lib/supabaseClient";
 import { translations, type Lang } from "./locales";
 import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, checkAndArchive, isTechnicianActive, type MockUser } from "./lib/storage";
 import type { Technician, Product, WorkOrder } from "./types";
@@ -52,6 +53,18 @@ export default function App() {
         if (count > 0) loadData();
       })();
     }
+  }, [user]);
+
+  // Real-time subscriptions: reflect backend changes instantly across all devices
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("smartdoor-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "technicians" }, () => fetchTechnicians().then(setTechnicians))
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => fetchProducts().then(setProducts))
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, () => fetchWorkOrders().then(setOrders))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   const currentTech = technicians.find(tc => tc.email === user?.technicianEmail) || null;
