@@ -23,43 +23,71 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   const dateStr = new Date().toLocaleString(lang === "ar" ? "ar-OM" : "en-GB");
   const warrantyLabel = warrantyOptions.find(w => w.value === String(order.warranty_months))?.[lang === "ar" ? "label_ar" : "label_en"] || (lang === "ar" ? "سنة" : "1 year");
 
-  const handleExport = async () => {
-    if (!previewRef.current) return;
-    setExporting(true);
-    try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ unit: "pt", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      let heightLeft = imgH;
-      let position = 0;
+  const generatePdf = async (): Promise<{ file: File; fileName: string } | null> => {
+    if (!previewRef.current) return null;
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+    const canvas = await html2canvas(previewRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+    });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let heightLeft = imgH;
+    let position = 0;
+    pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
       pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
       heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position -= pageH;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
-        heightLeft -= pageH;
+    }
+    const fileName = `invoice-${order.order_number}.pdf`;
+    const blob = pdf.output("blob");
+    const file = new File([blob], fileName, { type: "application/pdf" });
+    return { file, fileName };
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const result = await generatePdf();
+      if (result) {
+        const url = URL.createObjectURL(result.file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.fileName;
+        a.click();
+        URL.revokeObjectURL(url);
       }
-      pdf.save(`invoice-${order.order_number}.pdf`);
-      setExported(true);
-      const msg = translations[lang].whatsappMessage(order);
-      window.open(buildWhatsappUrl(order.client_phone, msg), "_blank");
-      onConfirm();
     } catch (e) {
       console.error("Export error", e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSend = async () => {
+    setExporting(true);
+    try {
+      const result = await generatePdf();
+      if (!result) return;
+      const url = URL.createObjectURL(result.file);
+      const msg = translations[lang].whatsappMessage({ ...order, invoiceUrl: url });
+      const waUrl = buildWhatsappUrl(order.client_phone, msg);
+      window.open(waUrl, "_blank");
+      setExported(true);
+    } catch (e) {
+      console.error("Send error", e);
     } finally {
       setExporting(false);
     }
@@ -112,7 +140,6 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
                 <Row label={t.clientName} value={order.client_name || "-"} />
                 <Row label={t.clientPhone} value={order.client_phone} />
                 {order.client_location_name && <Row label={t.clientLocation} value={order.client_location_name} />}
-                {order.gps_link && <Row label={t.gpsLink} value={order.gps_link} />}
                 <Row label={t.technician} value={order.technician_name || "-"} />
               </div>
             </div>
@@ -206,19 +233,28 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            title={t.downloadInvoice}
+          >
+            <Download className="h-5 w-5" />
+            <span className="hidden sm:inline">{t.downloadInvoice}</span>
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={exporting}
+            className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
           >
             {exporting ? (
               <>...</>
             ) : exported ? (
               <>
-                <MessageCircle className="h-5 w-5" />
-                {t.whatsapp}
+                <Check className="h-5 w-5" />
+                {t.sendToCustomer}
               </>
             ) : (
               <>
-                <Download className="h-5 w-5" />
-                {t.downloadInvoice}
+                <MessageCircle className="h-5 w-5" />
+                {t.sendToCustomer}
               </>
             )}
           </button>

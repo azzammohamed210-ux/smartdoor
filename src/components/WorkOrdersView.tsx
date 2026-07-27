@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
-import { Plus, Phone, MessageCircle, MapPin, Play, CheckCircle2, Search, Trash2 } from "lucide-react";
+import { Plus, Phone, MessageCircle, MapPin, Play, CheckCircle2, Search, Trash2, FileText } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
 import OrderDetailsModal from "./OrderDetailsModal";
-import { toArabicNumber, deleteOrder } from "../lib/storage";
+import InvoicePreviewModal from "./InvoicePreviewModal";
+import { toArabicNumber, deleteOrder, startWork } from "../lib/storage";
 
 interface Props {
   lang: Lang;
@@ -25,6 +26,7 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [techFilter, setTechFilter] = useState<string>("all");
   const [toast, setToast] = useState<string>("");
+  const [invoiceOrder, setInvoiceOrder] = useState<WorkOrder | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -146,15 +148,25 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                     <a href={`tel:${o.client_phone}`} className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100" title={t.call}>
                       <Phone className="h-4 w-4" />
                     </a>
-                    <a
-                      href={`https://wa.me/${o.client_phone.replace(/[^\d]/g, "")}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
-                      title={t.whatsapp}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </a>
+                    {o.status === "completed" ? (
+                      <button
+                        onClick={() => setInvoiceOrder(o)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
+                        title={t.viewInvoice}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <a
+                        href={`https://wa.me/${o.client_phone.replace(/[^\d]/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
+                        title={t.whatsapp}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </a>
+                    )}
                     <button
                       onClick={() => {
                         if (o.gps_link) {
@@ -170,7 +182,15 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                     </button>
                     {o.status !== "completed" && o.status !== "cancelled" && (
                       <button
-                        onClick={() => setSelected(o)}
+                        onClick={async () => {
+                          if (o.status === "pending") {
+                            try {
+                              await startWork(o.id);
+                              onRefresh();
+                            } catch { /* ignore */ }
+                          }
+                          setSelected(o);
+                        }}
                         className="flex h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
                       >
                         {o.status === "pending" ? <Play className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -236,6 +256,16 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
           currentTechId={currentTechId}
           onClose={() => { setSelected(null); onRefresh(); }}
           onRefresh={onRefresh}
+        />
+      )}
+      {invoiceOrder && (
+        <InvoicePreviewModal
+          lang={lang}
+          t={t}
+          order={invoiceOrder}
+          products={products}
+          onConfirm={() => setInvoiceOrder(null)}
+          onClose={() => setInvoiceOrder(null)}
         />
       )}
     </div>

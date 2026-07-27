@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { LogOut, DoorOpen } from "lucide-react";
 import { supabase } from "./lib/supabaseClient";
 import { translations, type Lang } from "./locales";
-import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, checkAndArchive, isTechnicianActive, type MockUser } from "./lib/storage";
+import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, isTechnicianActive, type MockUser } from "./lib/storage";
 import type { Technician, Product, WorkOrder } from "./types";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import LoginScreen from "./components/LoginScreen";
 import DashboardView from "./components/DashboardView";
+import InvoicePreviewModal from "./components/InvoicePreviewModal";
 import WorkOrdersView from "./components/WorkOrdersView";
 import InventoryView from "./components/InventoryView";
 import TechniciansView from "./components/TechniciansView";
@@ -26,6 +27,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [invoiceOrder, setInvoiceOrder] = useState<WorkOrder | null>(null);
   const [deactivated, setDeactivated] = useState(false);
 
   const t = translations[lang];
@@ -47,11 +49,6 @@ export default function App() {
   useEffect(() => {
     if (user) {
       loadData();
-      // Run client-side midnight archive check on login
-      (async () => {
-        const count = await checkAndArchive();
-        if (count > 0) loadData();
-      })();
     }
   }, [user]);
 
@@ -157,6 +154,8 @@ export default function App() {
                 onOpenMap={() => setShowMap(true)}
                 onBulkImport={() => setShowBulkImport(true)}
                 isAdmin={isAdmin}
+                onRefresh={loadData}
+                onInvoice={setInvoiceOrder}
               />
             )}
             {tab === "orders" && (
@@ -229,6 +228,17 @@ export default function App() {
       )}
 
       <PWAUpdateToast lang={lang} />
+
+      {invoiceOrder && (
+        <InvoicePreviewModal
+          lang={lang}
+          t={t}
+          order={invoiceOrder}
+          products={products}
+          onConfirm={() => setInvoiceOrder(null)}
+          onClose={() => setInvoiceOrder(null)}
+        />
+      )}
     </div>
   );
 }

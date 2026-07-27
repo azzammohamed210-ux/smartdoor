@@ -107,6 +107,7 @@ export interface Strings {
   invoiceDate: string;
   downloadInvoice: string;
   invoicePreviewTitle: string;
+  sendToCustomer: string;
   workOrderMap: string;
   techOrdersMap: string;
   back: string;
@@ -155,7 +156,7 @@ export interface Strings {
   colRoute: string;
   missingPhone: string;
   noParsedOrders: string;
-  whatsappMessage: (o: { order_number: string; client_name?: string; amount: number; warranty_months: number }) => string;
+  whatsappMessage: (o: { order_number: string; client_name?: string; invoiceUrl?: string }) => string;
   customerDatabase: string;
   customerDatabaseTitle: string;
   searchCustomers: string;
@@ -178,6 +179,10 @@ export interface Strings {
   archiveRunning: string;
   archiveDone: string;
   recordsCount: string;
+  completedOrders: string;
+  selectOrders: string;
+  archiveSelected: string;
+  archiveSelectedConfirm: string;
   updateAvailable: string;
   updateNow: string;
   updateDesc: string;
@@ -303,6 +308,7 @@ export const translations: Record<Lang, Strings> = {
     invoiceDate: "التاريخ",
     downloadInvoice: "تحميل الفاتورة",
     invoicePreviewTitle: "معاينة الفاتورة الإلكترونية",
+    sendToCustomer: "إرسال الفاتورة للعميل",
     workOrderMap: "خريطة أوامر العمل",
     techOrdersMap: "خرائط أوردرات الفنيين",
     back: "رجوع",
@@ -352,7 +358,7 @@ export const translations: Record<Lang, Strings> = {
     missingPhone: "رقم الهاتف مفقود",
     noParsedOrders: "لم يتم العثور على طلبات. الصق النص وحاول مرة أخرى.",
     whatsappMessage: (o) =>
-      `مرحباً بك في سمارت دور، تم إنجاز طلبكم بنجاح. يمكنك تحميل فاتورتكم الرسمية الإلكترونية من هنا. رقم الطلب: ${o.order_number}${o.client_name ? " - العميل: " + o.client_name : ""}. المبلغ: ${o.amount.toFixed(3)} ر.ع. الضمان: ${o.warranty_months} شهر. شكراً لثقتكم بنا.`,
+      `مرحباً ${o.client_name || ""}\nتم انجاز التركيب بنجاح برقم ${o.order_number}\nلتحميل الفاتوره الالكترونيه اضغط هنا ${o.invoiceUrl || "[INVOICE_PDF_URL]"}\nشكرا لثقتكم بنا.`,
     customerDatabase: "🗄️ قاعدة بيانات العملاء",
     customerDatabaseTitle: "قاعدة بيانات العملاء",
     searchCustomers: "بحث: اسم العميل، الهاتف، الفني...",
@@ -375,6 +381,10 @@ export const translations: Record<Lang, Strings> = {
     archiveRunning: "جاري أرشفة الأوامر المكتملة...",
     archiveDone: "تم أرشفة الأوامر المكتملة بنجاح",
     recordsCount: "عدد السجلات",
+    completedOrders: "الأوامر المكتملة",
+    selectOrders: "تحديد",
+    archiveSelected: "أرشفة المحدد",
+    archiveSelectedConfirm: "هل تريد أرشفة الأوامر المحددة؟",
     updateAvailable: "تحديث جديد متوفر",
     updateNow: "تحديث الآن",
     updateDesc: "نسخة محسنة جاهزة للتثبيت",
@@ -498,6 +508,7 @@ export const translations: Record<Lang, Strings> = {
     invoiceDate: "Date",
     downloadInvoice: "Download Invoice",
     invoicePreviewTitle: "Electronic Invoice Preview",
+    sendToCustomer: "Send Invoice to Customer",
     workOrderMap: "Work Order Map",
     techOrdersMap: "Technician Order Maps",
     back: "Back",
@@ -547,7 +558,7 @@ export const translations: Record<Lang, Strings> = {
     missingPhone: "Phone missing",
     noParsedOrders: "No orders found. Paste text and try again.",
     whatsappMessage: (o) =>
-      `Welcome to Smart Door. Your order ${o.order_number}${o.client_name ? " for " + o.client_name : ""} has been completed successfully. You can download your official electronic invoice here. Amount: ${o.amount.toFixed(3)} OMR. Warranty: ${o.warranty_months} months. Thank you for your trust.`,
+      `Hello ${o.client_name || ""}\nYour installation has been completed successfully, order number ${o.order_number}\nTo download your electronic invoice click here ${o.invoiceUrl || "[INVOICE_PDF_URL]"}\nThank you for your trust.`,
     customerDatabase: "🗄️ Customer Database",
     customerDatabaseTitle: "Customer Database",
     searchCustomers: "Search: customer name, phone, technician...",
@@ -570,6 +581,10 @@ export const translations: Record<Lang, Strings> = {
     archiveRunning: "Archiving completed orders...",
     archiveDone: "Completed orders archived successfully",
     recordsCount: "Records",
+    completedOrders: "Completed Orders",
+    selectOrders: "Select",
+    archiveSelected: "Archive Selected",
+    archiveSelectedConfirm: "Archive the selected orders?",
     updateAvailable: "New update available",
     updateNow: "Update Now",
     updateDesc: "Improved version ready to install",

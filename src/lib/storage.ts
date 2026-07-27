@@ -387,8 +387,31 @@ export async function completeOrder(id: string, details: {
   final_photo_url?: string;
   id_image_url?: string;
 }): Promise<void> {
+  await updateWorkOrder(id, { ...details, status: "completed" });
+  await deductInventoryForOrder(details.product_ids || (details.product_id ? [details.product_id] : []));
+}
+
+export async function deductInventoryForOrder(productIds: string[]): Promise<void> {
+  if (!productIds.length) return;
+  const products = await fetchProducts();
+  const counts = new Map<string, number>();
+  for (const pid of productIds) counts.set(pid, (counts.get(pid) || 0) + 1);
+  for (const [pid, qty] of counts) {
+    const p = products.find(x => x.id === pid);
+    if (p) await updateProduct(p.id, { ...p, total_stock: Math.max(0, p.total_stock - qty) });
+  }
+}
+
+export async function archiveOrders(ids: string[]): Promise<void> {
+  if (!ids.length) return;
   const now = new Date().toISOString();
-  await updateWorkOrder(id, { ...details, status: "completed", archived: true, archived_at: now });
+  try {
+    const { error } = await supabase.from("work_orders").update({ archived: true, archived_at: now }).in("id", ids);
+    if (!error) return;
+  } catch { /* fall through */ }
+  const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
+  for (const o of orders) if (ids.includes(o.id)) { o.archived = true; o.archived_at = now; }
+  lsSet(LS_ORDERS, orders);
 }
 
 export async function deleteOrder(id: string): Promise<void> {
@@ -402,6 +425,10 @@ export async function deleteOrder(id: string): Promise<void> {
 
 export async function cancelOrder(id: string, reason: string): Promise<void> {
   await updateWorkOrder(id, { status: "cancelled", cancel_reason: reason });
+}
+
+export async function startWork(id: string): Promise<void> {
+  await updateWorkOrder(id, { status: "in_progress" });
 }
 
 export async function bulkCreateOrders(

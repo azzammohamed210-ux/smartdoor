@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Search, Database, Phone, MapPin, ChevronDown, ChevronUp, FileText, Calendar, Filter, X } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
-import { fetchArchivedOrders, checkAndArchive, toArabicNumber } from "../lib/storage";
+import { fetchArchivedOrders, toArabicNumber } from "../lib/storage";
 import ArchivedOrderModal from "./ArchivedOrderModal";
 
 interface Props {
@@ -37,15 +37,6 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
 
   useEffect(() => {
     load();
-    // Run client-side archive check on mount
-    (async () => {
-      const count = await checkAndArchive();
-      if (count > 0) {
-        setArchiveMsg(t.archiveDone);
-        setTimeout(() => setArchiveMsg(""), 3000);
-        load();
-      }
-    })();
   }, []);
 
   const filtered = useMemo(() => {
