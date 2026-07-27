@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { X, Download, MessageCircle, Check } from "lucide-react";
 import type { Lang, Strings } from "../locales";
-import { translations, checklistItems, categoryLabels, warrantyOptions } from "../locales";
+import { translations, categoryLabels, warrantyOptions } from "../locales";
 import type { WorkOrder, Product } from "../types";
 import { buildWhatsappUrl } from "../lib/invoice";
 
@@ -94,6 +94,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   };
 
   const checkedSet = new Set(order.checklist || []);
+  void checkedSet;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -109,7 +110,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
           <div
             ref={previewRef}
             className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200"
-            style={{ borderRadius: "20px" }}
+            style={{ maxHeight: "100%", borderRadius: "20px" }}
           >
             <div className="px-6 pb-5 pt-7 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
               <div className="flex items-center justify-between">
@@ -157,22 +158,10 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               </div>
             </div>
 
-            <div className="border-t-2 border-slate-800 p-5">
-              <h4 className="mb-3 text-sm font-bold text-slate-800">{t.maintenanceChecklist}</h4>
-              <div className="space-y-2">
-                {checklistItems.map((c) => {
-                  const checked = checkedSet.has(c.key);
-                  return (
-                    <div key={c.key} className="flex items-center gap-2">
-                      <span className={`flex h-5 w-5 items-center justify-center rounded-md ${checked ? "bg-emerald-500 text-white" : "border-2 border-slate-200"}`}>
-                        {checked && <Check className="h-3 w-3" />}
-                      </span>
-                      <span className={`text-sm ${checked ? "text-slate-900" : "text-slate-400"}`}>
-                        {lang === "ar" ? c.label_ar : c.label_en}
-                      </span>
-                    </div>
-                  );
-                })}
+            <div className="border-t-2 border-slate-800 p-4">
+              <h4 className="mb-3 text-sm font-bold text-slate-800">{t.warranty}</h4>
+              <div className="rounded-xl border border-slate-200 p-3">
+                <p className="text-sm leading-relaxed text-slate-700">{t.warrantyNote}</p>
               </div>
             </div>
 

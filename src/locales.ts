@@ -20,6 +20,7 @@ export interface Strings {
   roleAdmin: string;
   roleTechnician: string;
   totalRevenue: string;
+  warrantyNote: string;
   totalWorkOrders: string;
   activeTechnicians: string;
   lowStockAlerts: string;
@@ -221,7 +222,8 @@ export const translations: Record<Lang, Strings> = {
     welcome: "مرحباً",
     roleAdmin: "مدير",
     roleTechnician: "فني",
-    totalRevenue: "إجمالي الإيرادات",
+    totalRevenue: "المبلغ المدفوع",
+    warrantyNote: "الضمان لا يشمل: سوء الاستعمال، العوامل الجوية، وأجهزة الاتصال (الريموتات/المستشعرات).",
     totalWorkOrders: "إجمالي أوامر العمل",
     activeTechnicians: "الفنيين النشطين",
     lowStockAlerts: "تنبيهات نقص المخزون",
@@ -422,7 +424,8 @@ export const translations: Record<Lang, Strings> = {
     welcome: "Welcome",
     roleAdmin: "Admin",
     roleTechnician: "Technician",
-    totalRevenue: "Total Revenue",
+    totalRevenue: "Amount Paid",
+    warrantyNote: "Warranty does not cover: misuse, weather factors, and communication devices (remotes/sensors).",
     totalWorkOrders: "Total Work Orders",
     activeTechnicians: "Active Technicians",
     lowStockAlerts: "Low Stock Alerts",
