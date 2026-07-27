@@ -60,6 +60,7 @@ export interface Strings {
   create: string;
   startWork: string;
   completeOrder: string;
+  orderCompletedSuccess: string;
   cancelOrder: string;
   cancelReason: string;
   cancelReasonPlaceholder: string;
@@ -260,7 +261,8 @@ export const translations: Record<Lang, Strings> = {
     cancel: "إلغاء",
     create: "إنشاء",
     startWork: "بدء العمل",
-    completeOrder: "اكتمل الأمر",
+    completeOrder: "إكتمال الأمر",
+    orderCompletedSuccess: "تم حفظ البيانات وإكتمال الأمر بنجاح",
     cancelOrder: "إلغاء الأمر",
     cancelReason: "يرجى كتابة سبب الإلغاء (إجباري)",
     cancelReasonPlaceholder: "اكتب سبب الإلغاء هنا...",
@@ -461,6 +463,7 @@ export const translations: Record<Lang, Strings> = {
     create: "Create",
     startWork: "Start Work",
     completeOrder: "Complete Order",
+    orderCompletedSuccess: "Data saved and order completed successfully",
     cancelOrder: "Cancel Order",
     cancelReason: "Please write the cancellation reason (mandatory)",
     cancelReasonPlaceholder: "Write cancellation reason here...",

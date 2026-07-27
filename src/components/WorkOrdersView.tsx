@@ -182,15 +182,7 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                     </button>
                     {o.status !== "completed" && o.status !== "cancelled" && (
                       <button
-                        onClick={async () => {
-                          if (o.status === "pending") {
-                            try {
-                              await startWork(o.id);
-                              onRefresh();
-                            } catch { /* ignore */ }
-                          }
-                          setSelected(o);
-                        }}
+                        onClick={() => setSelected(o)}
                         className="flex h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
                       >
                         {o.status === "pending" ? <Play className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}

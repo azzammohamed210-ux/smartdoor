@@ -39,6 +39,7 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
   const [error, setError] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<WorkOrder | null>(null);
+  const [successToast, setSuccessToast] = useState(false);
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
@@ -152,7 +153,12 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
           technician_name: technicians.find(tc => tc.id === (technicianId || order.technician_id))?.name,
         } as WorkOrder;
         setPendingOrder(fullOrder);
-        setShowInvoice(true);
+        setSuccessToast(true);
+        setTimeout(() => {
+          setSuccessToast(false);
+          onRefresh();
+          onClose();
+        }, 1800);
       }
     } catch (e: any) {
       setError(e.message || "Error");
@@ -479,6 +485,17 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
           onConfirm={() => { setShowInvoice(false); onRefresh(); onClose(); }}
           onClose={() => setShowInvoice(false)}
         />
+      )}
+
+      {successToast && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
+          <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-2xl">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+              <Check className="h-6 w-6 text-emerald-600" />
+            </div>
+            <span className="text-base font-semibold text-slate-800">{t.orderCompletedSuccess}</span>
+          </div>
+        </div>
       )}
     </>
   );
