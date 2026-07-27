@@ -138,7 +138,6 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
                 <Row label={t.clientName} value={order.client_name || "-"} />
                 <Row label={t.clientPhone} value={order.client_phone} />
                 {order.client_location_name && <Row label={t.clientLocation} value={order.client_location_name} />}
-                <Row label={t.technician} value={order.technician_name || "-"} />
               </div>
             </div>
 
@@ -156,11 +155,18 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
             </div>
 
             <div className="border-t-2 border-slate-800 p-3">
-              <h4 className="mb-2 text-sm font-bold text-slate-800">{t.warrantyTerms}</h4>
-              <div className="rounded-xl border border-slate-200 p-3">
-                <div className="space-y-1.5">
+              <h4 className="mb-2 text-sm font-bold text-slate-800">{t.paymentMethod}</h4>
+              <div className="rounded-xl border border-slate-200 p-2.5">
+                <p className="text-sm font-semibold text-slate-900">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
+              </div>
+            </div>
+
+            <div className="border-t-2 border-slate-800 p-3">
+              <h4 className="mb-1.5 text-sm font-bold text-slate-800">{t.warrantyTerms}</h4>
+              <div className="rounded-xl border border-slate-200 p-2.5">
+                <div className="space-y-1">
                   {t.warrantyNote.split("\n").map((line, i) => (
-                    <p key={i} className="text-xs leading-relaxed text-slate-700">{line}</p>
+                    <p key={i} className="text-[11px] leading-snug text-slate-700">{line}</p>
                   ))}
                 </div>
               </div>
@@ -196,21 +202,21 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               </div>
             )}
 
-            <div className="px-4 py-3 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
+            <div className="px-4 py-2.5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
               <div className="flex items-center justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="text-[11px] text-blue-100">{t.totalRevenue}</p>
-                  <p className="text-xl font-bold leading-tight">{order.amount.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+                  <p className="text-lg font-bold leading-tight whitespace-nowrap">{order.amount.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
                 </div>
-                <div className="text-right">
+                <div className="min-w-0 text-right">
                   <p className="text-[11px] text-blue-100">{t.warranty}</p>
-                  <p className="text-base font-bold leading-tight">{warrantyLabel}</p>
+                  <p className="text-sm font-bold leading-tight whitespace-nowrap">{warrantyLabel}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-900 px-4 py-2.5 text-center">
-              <p className="text-xs text-slate-400">{t.appTitle}</p>
+            <div className="bg-slate-900 px-4 py-2 text-center">
+              <p className="text-[11px] text-slate-400">{t.appTitle}</p>
               <p className="mt-0.5 text-[10px] text-slate-500">{t.appSubtitle}</p>
             </div>
           </div>
