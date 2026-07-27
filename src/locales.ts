@@ -21,6 +21,7 @@ export interface Strings {
   roleTechnician: string;
   totalRevenue: string;
   warrantyNote: string;
+  warrantyTerms: string;
   totalWorkOrders: string;
   activeTechnicians: string;
   lowStockAlerts: string;
@@ -223,7 +224,8 @@ export const translations: Record<Lang, Strings> = {
     roleAdmin: "مدير",
     roleTechnician: "فني",
     totalRevenue: "المبلغ المدفوع",
-    warrantyNote: "الضمان لا يشمل: سوء الاستعمال، العوامل الجوية، وأجهزة الاتصال (الريموتات/المستشعرات).",
+    warrantyTerms: "شروط وإرشادات الضمان",
+    warrantyNote: "1. نطاق التغطية: يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.\n2. العوامل الجوية: لا يشمل الضمان الأعطال أو الأضرار الناتجة عن سوء الأحوال والعوامل الجوية.\n3. التيار الكهربائي: لا يشمل الضمان الأعطال الناتجة عن تذبذب أو ارتفاع وانخفاض التيار الكهربائي في الموقع.",
     totalWorkOrders: "إجمالي أوامر العمل",
     activeTechnicians: "الفنيين النشطين",
     lowStockAlerts: "تنبيهات نقص المخزون",
@@ -425,7 +427,8 @@ export const translations: Record<Lang, Strings> = {
     roleAdmin: "Admin",
     roleTechnician: "Technician",
     totalRevenue: "Amount Paid",
-    warrantyNote: "Warranty does not cover: misuse, weather factors, and communication devices (remotes/sensors).",
+    warrantyTerms: "Warranty Terms & Guidelines",
+    warrantyNote: "1. Coverage: The warranty covers manufacturing defects of devices and technical faults resulting from the installation process only.\n2. Weather: The warranty does not cover faults or damage caused by bad weather conditions.\n3. Electrical: The warranty does not cover faults caused by fluctuation or rise and fall of electrical current at the site.",
     totalWorkOrders: "Total Work Orders",
     activeTechnicians: "Active Technicians",
     lowStockAlerts: "Low Stock Alerts",

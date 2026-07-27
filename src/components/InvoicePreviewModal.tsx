@@ -39,18 +39,15 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW;
+    const margin = 8;
+    const imgW = pageW - margin * 2;
     const imgH = (canvas.height * imgW) / canvas.width;
-    let heightLeft = imgH;
-    let position = 0;
-    pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
-    heightLeft -= pageH;
-    while (heightLeft > 0) {
-      position -= pageH;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
-      heightLeft -= pageH;
-    }
+    const scale = Math.min(1, (pageH - margin * 2) / imgH);
+    const finalW = imgW * scale;
+    const finalH = imgH * scale;
+    const offsetX = (pageW - finalW) / 2;
+    const offsetY = (pageH - finalH) / 2;
+    pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
     const fileName = `invoice-${order.order_number}.pdf`;
     const blob = pdf.output("blob");
     const file = new File([blob], fileName, { type: "application/pdf" });
@@ -112,7 +109,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
             className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200"
             style={{ maxHeight: "100%", borderRadius: "20px" }}
           >
-            <div className="px-6 pb-5 pt-7 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
+            <div className="px-5 pb-4 pt-5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold">{t.appTitle}</h2>
@@ -126,18 +123,18 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
             </div>
 
             <div className="grid grid-cols-2 gap-px bg-slate-200">
-              <div className="bg-white p-4">
+              <div className="bg-white p-3">
                 <p className="text-[10px] text-slate-400">{t.invoiceId}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{order.order_number}</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">{order.order_number}</p>
               </div>
-              <div className="bg-white p-4">
+              <div className="bg-white p-3">
                 <p className="text-[10px] text-slate-400">{t.invoiceDate}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{dateStr}</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">{dateStr}</p>
               </div>
             </div>
 
-            <div className="border-t-2 border-slate-800 p-5">
-              <div className="space-y-3">
+            <div className="border-t-2 border-slate-800 p-3">
+              <div className="space-y-2">
                 <Row label={t.clientName} value={order.client_name || "-"} />
                 <Row label={t.clientPhone} value={order.client_phone} />
                 {order.client_location_name && <Row label={t.clientLocation} value={order.client_location_name} />}
@@ -145,9 +142,9 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               </div>
             </div>
 
-            <div className="border-t-2 border-slate-800 p-5">
-              <h4 className="mb-3 text-sm font-bold text-slate-800">{t.product}</h4>
-              <div className="rounded-xl border border-slate-200 p-3">
+            <div className="border-t-2 border-slate-800 p-3">
+              <h4 className="mb-2 text-sm font-bold text-slate-800">{t.product}</h4>
+              <div className="rounded-xl border border-slate-200 p-2.5">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{product?.name_ar || "-"}</p>
@@ -158,57 +155,61 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               </div>
             </div>
 
-            <div className="border-t-2 border-slate-800 p-4">
-              <h4 className="mb-3 text-sm font-bold text-slate-800">{t.warranty}</h4>
+            <div className="border-t-2 border-slate-800 p-3">
+              <h4 className="mb-2 text-sm font-bold text-slate-800">{t.warrantyTerms}</h4>
               <div className="rounded-xl border border-slate-200 p-3">
-                <p className="text-sm leading-relaxed text-slate-700">{t.warrantyNote}</p>
+                <div className="space-y-1.5">
+                  {t.warrantyNote.split("\n").map((line, i) => (
+                    <p key={i} className="text-xs leading-relaxed text-slate-700">{line}</p>
+                  ))}
+                </div>
               </div>
             </div>
 
             {order.id_image_url && (
-              <div className="border-t-2 border-slate-800 p-5">
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              <div className="border-t-2 border-slate-800 p-3">
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
                   {t.idImageAttached}
                 </div>
-                <img src={order.id_image_url} alt="ID" className="mt-2 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
+                <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
               </div>
             )}
 
             {order.payment_method === "bank" && order.receipt_image_url && (
-              <div className="border-t-2 border-slate-800 p-5">
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              <div className="border-t-2 border-slate-800 p-3">
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
                   {t.receiptAttached}
                 </div>
-                <img src={order.receipt_image_url} alt="receipt" className="mt-2 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
+                <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
               </div>
             )}
 
             {order.final_photo_url && (
-              <div className="border-t-2 border-slate-800 p-5">
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              <div className="border-t-2 border-slate-800 p-3">
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
                   {t.finalPhotoAttached}
                 </div>
-                <img src={order.final_photo_url} alt="final" className="mt-2 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
+                <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
               </div>
             )}
 
-            <div className="p-5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
-              <div className="flex items-center justify-between">
+            <div className="px-4 py-3 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs text-blue-100">{t.totalRevenue}</p>
-                  <p className="text-2xl font-bold">{order.amount.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+                  <p className="text-[11px] text-blue-100">{t.totalRevenue}</p>
+                  <p className="text-xl font-bold leading-tight">{order.amount.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-blue-100">{t.warranty}</p>
-                  <p className="text-lg font-bold">{warrantyLabel}</p>
+                  <p className="text-[11px] text-blue-100">{t.warranty}</p>
+                  <p className="text-base font-bold leading-tight">{warrantyLabel}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-900 p-4 text-center">
+            <div className="bg-slate-900 px-4 py-2.5 text-center">
               <p className="text-xs text-slate-400">{t.appTitle}</p>
               <p className="mt-0.5 text-[10px] text-slate-500">{t.appSubtitle}</p>
             </div>
