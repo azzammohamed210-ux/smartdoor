@@ -208,6 +208,11 @@ export interface Strings {
   selectedCount: string;
   longPressHint: string;
   deletePermanently: string;
+  managerEditOrder: string;
+  saveChanges: string;
+  editOrderFields: string;
+  changesSaved: string;
+  longPressEditHint: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -420,6 +425,11 @@ export const translations: Record<Lang, Strings> = {
     selectedCount: "تم تحديد {count} عناصر",
     longPressHint: "اضغط مطولاً للتحديد",
     deletePermanently: "حذف النهائي",
+    managerEditOrder: "تعديل أمر العمل (مدير)",
+    saveChanges: "حفظ التعديلات",
+    editOrderFields: "تعديل بيانات الأمر",
+    changesSaved: "تم حفظ التعديلات بنجاح",
+    longPressEditHint: "اضغط مطولاً على أي أمر لتعديله",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -630,6 +640,11 @@ export const translations: Record<Lang, Strings> = {
     selectedCount: "{count} items selected",
     longPressHint: "Long-press to select",
     deletePermanently: "Delete Permanently",
+    managerEditOrder: "Edit Work Order (Manager)",
+    saveChanges: "Save Changes",
+    editOrderFields: "Edit Order Details",
+    changesSaved: "Changes saved successfully",
+    longPressEditHint: "Long-press any order to edit it",
   },
 };
 
