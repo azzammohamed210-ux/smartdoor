@@ -27,7 +27,6 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selected, setSelected] = useState<WorkOrder | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [archiveMsg, setArchiveMsg] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -212,13 +211,6 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
           {t.recordsCount}: {toArabicNumber(filtered.length)}
         </span>
       </div>
-
-      {/* Archive notification */}
-      {archiveMsg && (
-        <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
-          {archiveMsg}
-        </div>
-      )}
 
       {/* Live search */}
       <div className="relative">
