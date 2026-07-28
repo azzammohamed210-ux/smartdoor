@@ -16,7 +16,9 @@ interface Props {
 
 const OMAN_CENTER = { lat: 23.588, lng: 58.3829 };
 const GREEN = "#10b981";
+const ORANGE = "#f59e0b";
 const RED = "#ef4444";
+const GOOGLE_SUBS = ["mt0", "mt1", "mt2", "mt3"];
 
 interface ClusterInfo {
   id: number;
@@ -56,12 +58,14 @@ function clusterOrders(orders: WorkOrder[], thresholdKm = 3): ClusterInfo[] {
   return clusters.map((co, idx) => {
     const lat = co.reduce((s, o) => s + o.gps_lat!, 0) / co.length;
     const lng = co.reduce((s, o) => s + o.gps_lng!, 0) / co.length;
-    const hasUrgent = co.some((o) => o.status === "pending" || o.status === "cancelled");
+    const hasCancelled = co.some((o) => o.status === "cancelled");
+    const hasPending = co.some((o) => o.status === "pending" || o.status === "in_progress");
+    const color = hasCancelled ? RED : hasPending ? ORANGE : GREEN;
     return {
       id: idx,
       orders: co.sort((a, b) => (a.route_number || 0) - (b.route_number || 0)),
       center: { lat, lng },
-      color: hasUrgent ? RED : GREEN,
+      color,
       routeNumber: idx + 1,
     };
   });
@@ -95,7 +99,7 @@ function sortOptimalVisit(orders: WorkOrder[]): WorkOrder[] {
 }
 
 const orderColor = (status: string): string =>
-  status === "completed" || status === "in_progress" ? GREEN : RED;
+  status === "completed" ? GREEN : status === "cancelled" ? RED : ORANGE;
 
 interface Bounds {
   minLat: number;
@@ -304,18 +308,16 @@ export default function MapView({ lang, t, orders, technician, technicians, isAd
   };
 
   const getTileUrl = (x: number, y: number, z: number): string => {
+    const s = GOOGLE_SUBS[(x + y) % GOOGLE_SUBS.length];
     if (mapStyle === "satellite") {
-      return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+      return `https://${s}.google.com/vt/lyrs=s,h&x=${x}&y=${y}&z=${z}`;
     }
-    return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+    return `https://${s}.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`;
   };
-
-  const getLabelTileUrl = (x: number, y: number, z: number): string =>
-    `https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${z}/${y}/${x}`;
 
   const tiles = useMemo(() => {
     if (!mapReady) return [];
-    const tileResults: { url: string; label: string; left: number; top: number; size: number }[] = [];
+    const tileResults: { url: string; left: number; top: number; size: number }[] = [];
     const z = Math.round(zoom);
     const n = Math.pow(2, z);
     const lngToX = (lng: number) => ((lng + 180) / 360) * n;
@@ -340,7 +342,6 @@ export default function MapView({ lang, t, orders, technician, technicians, isAd
         const tileTop = (latToY((Math.atan(Math.exp(Math.PI * (1 - 2 * (y / n)))) * 180 / Math.PI - 90)) - latToY(mapBounds.maxLat)) * yScale;
         tileResults.push({
           url: getTileUrl(wrappedX, y, z),
-          label: getLabelTileUrl(wrappedX, y, z),
           left: tileLeft,
           top: tileTop,
           size: tileSize * scale / n * n,
@@ -419,18 +420,6 @@ export default function MapView({ lang, t, orders, technician, technicians, isAd
               src={tile.url}
               alt=""
               className="absolute select-none"
-              style={{ left: `${tile.left}px`, top: `${tile.top}px`, width: `${tile.size}px`, height: `${tile.size}px` }}
-              draggable={false}
-              loading="lazy"
-            />
-          ))}
-          {/* Labels overlay for hybrid satellite view */}
-          {mapStyle === "satellite" && tiles.map((tile, i) => (
-            <img
-              key={`label-${tile.label}-${i}`}
-              src={tile.label}
-              alt=""
-              className="absolute pointer-events-none select-none"
               style={{ left: `${tile.left}px`, top: `${tile.top}px`, width: `${tile.size}px`, height: `${tile.size}px` }}
               draggable={false}
               loading="lazy"
@@ -528,33 +517,20 @@ export default function MapView({ lang, t, orders, technician, technicians, isAd
         {/* Legend */}
         <div className="absolute bottom-4 left-4 z-20 rounded-xl bg-white/95 p-3 shadow-lg backdrop-blur">
           <p className="mb-2 text-xs font-semibold text-slate-700">{lang === "ar" ? "المفتاح" : "Legend"}</p>
-          {expandedCluster === null ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white" />
-                <span className="text-xs text-slate-600">{lang === "ar" ? "نشط / مكتمل" : "Active / Completed"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white" />
-                <span className="text-xs text-slate-600">{lang === "ar" ? "عاجل / معلق" : "Urgent / Pending"}</span>
-              </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white" />
+              <span className="text-xs text-slate-600">{t.legendCompleted}</span>
             </div>
-          ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">1</span>
-                <span className="text-xs text-slate-600">{t.visitOrder}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-xs text-slate-600">{lang === "ar" ? "مكتمل / نشط" : "Completed / Active"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                <span className="text-xs text-slate-600">{lang === "ar" ? "عاجل / معلق" : "Urgent / Pending"}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white" />
+              <span className="text-xs text-slate-600">{lang === "ar" ? "قيد الانتظار / التنفيذ" : "Pending / In Progress"}</span>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white" />
+              <span className="text-xs text-slate-600">{t.legendCancelled}</span>
+            </div>
+          </div>
         </div>
 
         {/* Hint banner */}
@@ -615,17 +591,15 @@ export default function MapView({ lang, t, orders, technician, technicians, isAd
                 )}
               </div>
             </div>
-            {selectedOrder.gps_link && (
-              <a
-                href={selectedOrder.gps_link}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                <Navigation className="h-4 w-4" />
-                {t.openGoogleMaps}
-              </a>
-            )}
+            <a
+              href={selectedOrder.gps_link || `https://www.google.com/maps/dir/?api=1&destination=${selectedOrder.gps_lat},${selectedOrder.gps_lng}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              <Navigation className="h-4 w-4" />
+              {t.openGoogleMaps}
+            </a>
           </div>
         </div>
       )}
