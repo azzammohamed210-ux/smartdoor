@@ -29,12 +29,20 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       import("html2canvas"),
       import("jspdf"),
     ]);
-    const canvas = await html2canvas(invoiceRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-    });
+    const attachments = invoiceRef.current.querySelector("#attachments-section") as HTMLElement | null;
+    if (attachments) attachments.style.display = "none";
+    await new Promise((r) => requestAnimationFrame(r));
+    let canvas: HTMLCanvasElement;
+    try {
+      canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+    } finally {
+      if (attachments) attachments.style.display = "";
+    }
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -180,35 +188,37 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               </div>
             </div>
 
-            {order.id_image_url && (
-              <div className="border-t-2 border-slate-800 p-3">
-                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  {t.idImageAttached}
+            <div id="attachments-section">
+              {order.id_image_url && (
+                <div className="border-t-2 border-slate-800 p-3">
+                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {t.idImageAttached}
+                  </div>
+                  <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
                 </div>
-                <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-              </div>
-            )}
+              )}
 
-            {order.payment_method === "bank" && order.receipt_image_url && (
-              <div className="border-t-2 border-slate-800 p-3">
-                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  {t.receiptAttached}
+              {order.payment_method === "bank" && order.receipt_image_url && (
+                <div className="border-t-2 border-slate-800 p-3">
+                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {t.receiptAttached}
+                  </div>
+                  <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
                 </div>
-                <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-              </div>
-            )}
+              )}
 
-            {order.final_photo_url && (
-              <div className="border-t-2 border-slate-800 p-3">
-                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  {t.finalPhotoAttached}
+              {order.final_photo_url && (
+                <div className="border-t-2 border-slate-800 p-3">
+                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {t.finalPhotoAttached}
+                  </div>
+                  <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
                 </div>
-                <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="px-4 py-2.5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
               <div className="flex items-center justify-between gap-4">
@@ -229,44 +239,6 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
             </div>
           </div>
           </div>
-
-          {/* Internal attachments — visible in modal for admin reference, excluded from PDF */}
-          {(order.id_image_url || (order.payment_method === "bank" && order.receipt_image_url) || order.final_photo_url) && (
-            <div className="mx-auto mt-4 max-w-md">
-              <div className="mb-2 flex items-center gap-1.5">
-                <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600">{lang === "ar" ? "المرفقات (للاستخدام الداخلي)" : "Attachments (internal use)"}</span>
-              </div>
-              <div className="space-y-3">
-                {order.id_image_url && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      {t.idImageAttached}
-                    </div>
-                    <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-                  </div>
-                )}
-                {order.payment_method === "bank" && order.receipt_image_url && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      {t.receiptAttached}
-                    </div>
-                    <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-                  </div>
-                )}
-                {order.final_photo_url && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      {t.finalPhotoAttached}
-                    </div>
-                    <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex gap-3 border-t border-slate-200 bg-white p-4">
