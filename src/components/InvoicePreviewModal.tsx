@@ -48,7 +48,8 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     const offsetX = (pageW - finalW) / 2;
     const offsetY = (pageH - finalH) / 2;
     pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
-    const fileName = `invoice-${order.order_number}.pdf`;
+    const safeName = (order.client_name || "client").replace(/[\\/:*?"<>|]/g, "_");
+    const fileName = `الفاتورة_${safeName}_${order.client_phone}.pdf`;
     const blob = pdf.output("blob");
     const file = new File([blob], fileName, { type: "application/pdf" });
     return { file, fileName };
@@ -79,7 +80,12 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       const result = await generatePdf();
       if (!result) return;
       const url = URL.createObjectURL(result.file);
-      const msg = translations[lang].whatsappMessage({ ...order, invoiceUrl: url });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      const msg = translations[lang].whatsappMessage(order);
       const waUrl = buildWhatsappUrl(order.client_phone, msg);
       window.open(waUrl, "_blank");
       setExported(true);

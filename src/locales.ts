@@ -159,7 +159,7 @@ export interface Strings {
   colRoute: string;
   missingPhone: string;
   noParsedOrders: string;
-  whatsappMessage: (o: { order_number: string; client_name?: string; invoiceUrl?: string }) => string;
+  whatsappMessage: (o: { order_number: string; client_name?: string }) => string;
   customerDatabase: string;
   customerDatabaseTitle: string;
   searchCustomers: string;
@@ -364,7 +364,7 @@ export const translations: Record<Lang, Strings> = {
     missingPhone: "رقم الهاتف مفقود",
     noParsedOrders: "لم يتم العثور على طلبات. الصق النص وحاول مرة أخرى.",
     whatsappMessage: (o) =>
-      `مرحباً ${o.client_name || ""}\nتم انجاز التركيب بنجاح برقم ${o.order_number}\nلتحميل الفاتوره الالكترونيه اضغط هنا ${o.invoiceUrl || "[INVOICE_PDF_URL]"}\nشكرا لثقتكم بنا.`,
+      `مرحباً ${o.client_name || ""}\nتم انجاز التركيب بنجاح برقم\n${o.order_number}\nشكرا لثقتكم بنا.`,
     customerDatabase: "🗄️ قاعدة بيانات العملاء",
     customerDatabaseTitle: "قاعدة بيانات العملاء",
     searchCustomers: "بحث: اسم العميل، الهاتف، الفني...",
@@ -567,7 +567,7 @@ export const translations: Record<Lang, Strings> = {
     missingPhone: "Phone missing",
     noParsedOrders: "No orders found. Paste text and try again.",
     whatsappMessage: (o) =>
-      `Hello ${o.client_name || ""}\nYour installation has been completed successfully, order number ${o.order_number}\nTo download your electronic invoice click here ${o.invoiceUrl || "[INVOICE_PDF_URL]"}\nThank you for your trust.`,
+      `Hello ${o.client_name || ""}\nYour installation has been completed successfully, order number\n${o.order_number}\nThank you for your trust.`,
     customerDatabase: "🗄️ Customer Database",
     customerDatabaseTitle: "Customer Database",
     searchCustomers: "Search: customer name, phone, technician...",
