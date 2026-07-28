@@ -382,19 +382,10 @@ export async function updateWorkOrder(id: string, patch: Partial<WorkOrder>): Pr
   if (patch.id_image_url !== undefined) dbPatch.id_image_url = patch.id_image_url || null;
   if (patch.invoice_url !== undefined) dbPatch.invoice_url = patch.invoice_url || null;
 
-  try {
-    const { error } = await supabase.from("work_orders").update(dbPatch).eq("id", id);
-    if (!error) return;
+  const { error } = await supabase.from("work_orders").update(dbPatch).eq("id", id);
+  if (error) {
     console.error("[updateWorkOrder] DB error:", error.message, "patch:", dbPatch);
-  } catch (e: any) {
-    console.error("[updateWorkOrder] exception:", e?.message);
-  }
-  // Fallback: local cache
-  const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
-  const idx = orders.findIndex(o => o.id === id);
-  if (idx >= 0) {
-    orders[idx] = { ...orders[idx], ...patch, updated_at: now };
-    lsSet(LS_ORDERS, orders);
+    throw new Error(error.message);
   }
 }
 
