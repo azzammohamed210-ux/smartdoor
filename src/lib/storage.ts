@@ -423,6 +423,17 @@ export async function deleteOrder(id: string): Promise<void> {
   lsSet(LS_ORDERS, orders.filter(o => o.id !== id));
 }
 
+export async function deleteOrders(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  try {
+    const { error } = await supabase.from("work_orders").delete().in("id", ids);
+    if (!error) return;
+  } catch { /* fall through */ }
+  const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
+  const remove = new Set(ids);
+  lsSet(LS_ORDERS, orders.filter(o => !remove.has(o.id)));
+}
+
 export async function cancelOrder(id: string, reason: string): Promise<void> {
   await updateWorkOrder(id, { status: "cancelled", cancel_reason: reason });
 }

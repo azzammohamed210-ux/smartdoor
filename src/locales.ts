@@ -201,6 +201,13 @@ export interface Strings {
   tapClusterHint: string;
   deleteOrder: string;
   confirmDeleteOrder: string;
+  bulkDeleteSelected: string;
+  bulkDeleteConfirm: string;
+  selectAll: string;
+  deselectAll: string;
+  selectedCount: string;
+  longPressHint: string;
+  deletePermanently: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -406,6 +413,13 @@ export const translations: Record<Lang, Strings> = {
     tapClusterHint: "اضغط على مجموعة لعرض الطلبات الفردية",
     deleteOrder: "حذف نهائي",
     confirmDeleteOrder: "هل أنت متأكد من الحذف النهائي لهذا الأمر؟ لا يمكن التراجع عن هذا الإجراء.",
+    bulkDeleteSelected: "حذف المحدد",
+    bulkDeleteConfirm: "هل أنت أصلًا متاكد من حذف الأوامر المحددة نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.",
+    selectAll: "تحديد الكل",
+    deselectAll: "إلغاء التحديد",
+    selectedCount: "تم تحديد {count} عناصر",
+    longPressHint: "اضغط مطولاً للتحديد",
+    deletePermanently: "حذف النهائي",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -609,6 +623,13 @@ export const translations: Record<Lang, Strings> = {
     tapClusterHint: "Tap a cluster to reveal individual orders",
     deleteOrder: "Delete Permanently",
     confirmDeleteOrder: "Are you sure you want to permanently delete this order? This action cannot be undone.",
+    bulkDeleteSelected: "Delete Selected",
+    bulkDeleteConfirm: "Are you absolutely sure you want to permanently delete the selected orders from the database? This action cannot be undone.",
+    selectAll: "Select All",
+    deselectAll: "Deselect All",
+    selectedCount: "{count} items selected",
+    longPressHint: "Long-press to select",
+    deletePermanently: "Delete Permanently",
   },
 };
 
