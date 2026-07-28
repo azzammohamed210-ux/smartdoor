@@ -37,21 +37,25 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
   }, []);
 
   const routeSequence = useMemo(() => {
-    const map = new Map<string, number>();
-    const sorted = [...orders].sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
-    sorted.forEach((o) => {
-      if (o.technician_id && o.status !== "cancelled") {
-        const next = (map.get(o.technician_id) || 0) + 1;
-        map.set(o.technician_id, next);
-      }
+    const seqMap = new Map<string, number>();
+    const perTech: Record<string, WorkOrder[]> = {};
+    orders
+      .filter(o => o.technician_id && o.status !== "cancelled")
+      .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
+      .forEach(o => {
+        const tid = o.technician_id!;
+        (perTech[tid] ||= []).push(o);
+      });
+    Object.entries(perTech).forEach(([tid, list]) => {
+      list.forEach((o, idx) => seqMap.set(`${tid}:${o.id}`, idx + 1));
     });
-    return map;
+    return seqMap;
   }, [orders]);
 
   const routeOf = useCallback((o: WorkOrder): number | null => {
     if (!o.technician_id || o.status === "cancelled") return null;
-    return routeSequence.get(o.technician_id) ? [...orders].filter(x => x.technician_id === o.technician_id && x.status !== "cancelled").sort((a,b)=>(a.created_at||"").localeCompare(b.created_at||"")).findIndex(x => x.id === o.id) + 1 : null;
-  }, [orders, routeSequence]);
+    return routeSequence.get(`${o.technician_id}:${o.id}`) ?? null;
+  }, [routeSequence]);
 
   const startLongPress = (o: WorkOrder) => {
     longPressTimer.current = setTimeout(() => {
