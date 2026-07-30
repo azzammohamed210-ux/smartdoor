@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function InvoicePreviewModal({ lang, t, order, products, onConfirm, onClose }: Props) {
-  const invoiceRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
 
@@ -24,25 +24,17 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   const warrantyLabel = warrantyOptions.find(w => w.value === String(order.warranty_months))?.[lang === "ar" ? "label_ar" : "label_en"] || (lang === "ar" ? "سنة" : "1 year");
 
   const generatePdf = async (): Promise<{ file: File; fileName: string } | null> => {
-    if (!invoiceRef.current) return null;
+    if (!previewRef.current) return null;
     const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
     ]);
-    const attachments = invoiceRef.current.querySelector("#attachments-section") as HTMLElement | null;
-    if (attachments) attachments.style.display = "none";
-    await new Promise((r) => requestAnimationFrame(r));
-    let canvas: HTMLCanvasElement;
-    try {
-      canvas = await html2canvas(invoiceRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-    } finally {
-      if (attachments) attachments.style.display = "";
-    }
+    const canvas = await html2canvas(previewRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+    });
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -56,8 +48,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     const offsetX = (pageW - finalW) / 2;
     const offsetY = (pageH - finalH) / 2;
     pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
-    const safeName = (order.client_name || "client").replace(/[\\/:*?"<>|]/g, "_");
-    const fileName = `الفاتورة_${safeName}_${order.client_phone}.pdf`;
+    const fileName = `invoice-${order.order_number}.pdf`;
     const blob = pdf.output("blob");
     const file = new File([blob], fileName, { type: "application/pdf" });
     return { file, fileName };
@@ -88,12 +79,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       const result = await generatePdf();
       if (!result) return;
       const url = URL.createObjectURL(result.file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = result.fileName;
-      a.click();
-      URL.revokeObjectURL(url);
-      const msg = translations[lang].whatsappMessage(order);
+      const msg = translations[lang].whatsappMessage({ ...order, invoiceUrl: url });
       const waUrl = buildWhatsappUrl(order.client_phone, msg);
       window.open(waUrl, "_blank");
       setExported(true);
@@ -118,12 +104,10 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {/* Clean client invoice (used for PDF generation) — no attachment images */}
-          <div className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200" style={{ borderRadius: "20px" }}>
           <div
-            ref={invoiceRef}
-            className="mx-auto max-w-md overflow-hidden bg-white"
-            style={{ borderRadius: "20px" }}
+            ref={previewRef}
+            className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200"
+            style={{ maxHeight: "100%", borderRadius: "20px" }}
           >
             <div className="px-5 pb-4 pt-5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
               <div className="flex items-center justify-between">
@@ -188,37 +172,35 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               </div>
             </div>
 
-            <div id="attachments-section">
-              {order.id_image_url && (
-                <div className="border-t-2 border-slate-800 p-3">
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t.idImageAttached}
-                  </div>
-                  <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
+            {order.id_image_url && (
+              <div className="border-t-2 border-slate-800 p-3">
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  {t.idImageAttached}
                 </div>
-              )}
+                <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
+              </div>
+            )}
 
-              {order.payment_method === "bank" && order.receipt_image_url && (
-                <div className="border-t-2 border-slate-800 p-3">
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t.receiptAttached}
-                  </div>
-                  <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
+            {order.payment_method === "bank" && order.receipt_image_url && (
+              <div className="border-t-2 border-slate-800 p-3">
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  {t.receiptAttached}
                 </div>
-              )}
+                <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
+              </div>
+            )}
 
-              {order.final_photo_url && (
-                <div className="border-t-2 border-slate-800 p-3">
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t.finalPhotoAttached}
-                  </div>
-                  <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
+            {order.final_photo_url && (
+              <div className="border-t-2 border-slate-800 p-3">
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  {t.finalPhotoAttached}
                 </div>
-              )}
-            </div>
+                <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
+              </div>
+            )}
 
             <div className="px-4 py-2.5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
               <div className="flex items-center justify-between gap-4">
@@ -237,7 +219,6 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               <p className="text-[11px] text-slate-400">{t.appTitle}</p>
               <p className="mt-0.5 text-[10px] text-slate-500">{t.appSubtitle}</p>
             </div>
-          </div>
           </div>
         </div>
 

@@ -159,7 +159,7 @@ export interface Strings {
   colRoute: string;
   missingPhone: string;
   noParsedOrders: string;
-  whatsappMessage: (o: { order_number: string; client_name?: string }) => string;
+  whatsappMessage: (o: { order_number: string; client_name?: string; invoiceUrl?: string }) => string;
   customerDatabase: string;
   customerDatabaseTitle: string;
   searchCustomers: string;
@@ -201,18 +201,6 @@ export interface Strings {
   tapClusterHint: string;
   deleteOrder: string;
   confirmDeleteOrder: string;
-  bulkDeleteSelected: string;
-  bulkDeleteConfirm: string;
-  selectAll: string;
-  deselectAll: string;
-  selectedCount: string;
-  longPressHint: string;
-  deletePermanently: string;
-  managerEditOrder: string;
-  saveChanges: string;
-  editOrderFields: string;
-  changesSaved: string;
-  longPressEditHint: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -376,7 +364,7 @@ export const translations: Record<Lang, Strings> = {
     missingPhone: "رقم الهاتف مفقود",
     noParsedOrders: "لم يتم العثور على طلبات. الصق النص وحاول مرة أخرى.",
     whatsappMessage: (o) =>
-      `مرحباً ${o.client_name || ""}\nتم انجاز التركيب بنجاح برقم\n${o.order_number}\nشكرا لثقتكم بنا.`,
+      `مرحباً ${o.client_name || ""}\nتم انجاز التركيب بنجاح برقم ${o.order_number}\nلتحميل الفاتوره الالكترونيه اضغط هنا ${o.invoiceUrl || "[INVOICE_PDF_URL]"}\nشكرا لثقتكم بنا.`,
     customerDatabase: "🗄️ قاعدة بيانات العملاء",
     customerDatabaseTitle: "قاعدة بيانات العملاء",
     searchCustomers: "بحث: اسم العميل، الهاتف، الفني...",
@@ -418,18 +406,6 @@ export const translations: Record<Lang, Strings> = {
     tapClusterHint: "اضغط على مجموعة لعرض الطلبات الفردية",
     deleteOrder: "حذف نهائي",
     confirmDeleteOrder: "هل أنت متأكد من الحذف النهائي لهذا الأمر؟ لا يمكن التراجع عن هذا الإجراء.",
-    bulkDeleteSelected: "حذف المحدد",
-    bulkDeleteConfirm: "هل أنت أصلًا متاكد من حذف الأوامر المحددة نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.",
-    selectAll: "تحديد الكل",
-    deselectAll: "إلغاء التحديد",
-    selectedCount: "تم تحديد {count} عناصر",
-    longPressHint: "اضغط مطولاً للتحديد",
-    deletePermanently: "حذف النهائي",
-    managerEditOrder: "تعديل أمر العمل (مدير)",
-    saveChanges: "حفظ التعديلات",
-    editOrderFields: "تعديل بيانات الأمر",
-    changesSaved: "تم حفظ التعديلات بنجاح",
-    longPressEditHint: "اضغط مطولاً على أي أمر لتعديله",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -591,7 +567,7 @@ export const translations: Record<Lang, Strings> = {
     missingPhone: "Phone missing",
     noParsedOrders: "No orders found. Paste text and try again.",
     whatsappMessage: (o) =>
-      `Hello ${o.client_name || ""}\nYour installation has been completed successfully, order number\n${o.order_number}\nThank you for your trust.`,
+      `Hello ${o.client_name || ""}\nYour installation has been completed successfully, order number ${o.order_number}\nTo download your electronic invoice click here ${o.invoiceUrl || "[INVOICE_PDF_URL]"}\nThank you for your trust.`,
     customerDatabase: "🗄️ Customer Database",
     customerDatabaseTitle: "Customer Database",
     searchCustomers: "Search: customer name, phone, technician...",
@@ -633,18 +609,6 @@ export const translations: Record<Lang, Strings> = {
     tapClusterHint: "Tap a cluster to reveal individual orders",
     deleteOrder: "Delete Permanently",
     confirmDeleteOrder: "Are you sure you want to permanently delete this order? This action cannot be undone.",
-    bulkDeleteSelected: "Delete Selected",
-    bulkDeleteConfirm: "Are you absolutely sure you want to permanently delete the selected orders from the database? This action cannot be undone.",
-    selectAll: "Select All",
-    deselectAll: "Deselect All",
-    selectedCount: "{count} items selected",
-    longPressHint: "Long-press to select",
-    deletePermanently: "Delete Permanently",
-    managerEditOrder: "Edit Work Order (Manager)",
-    saveChanges: "Save Changes",
-    editOrderFields: "Edit Order Details",
-    changesSaved: "Changes saved successfully",
-    longPressEditHint: "Long-press any order to edit it",
   },
 };
 

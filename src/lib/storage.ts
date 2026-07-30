@@ -351,41 +351,24 @@ export async function createWorkOrder(input: {
 }
 
 export async function updateWorkOrder(id: string, patch: Partial<WorkOrder>): Promise<void> {
-  const gps = patch.gps_link !== undefined ? parseGpsLink(patch.gps_link) : {};
-  const now = new Date().toISOString();
-
-  // Build a clean DB patch — only real columns, strip derived/virtual fields
-  const dbPatch: Record<string, unknown> = { updated_at: now };
-  if (patch.technician_id !== undefined) dbPatch.technician_id = patch.technician_id || null;
-  if (patch.client_name !== undefined) dbPatch.client_name = patch.client_name || null;
-  if (patch.client_phone !== undefined) dbPatch.client_phone = patch.client_phone;
-  if (patch.client_location_name !== undefined) dbPatch.client_location_name = patch.client_location_name || null;
+  const gps = patch.gps_link ? parseGpsLink(patch.gps_link) : {};
+  const dbPatch: any = { ...patch, updated_at: new Date().toISOString() };
   if (patch.gps_link !== undefined) {
-    dbPatch.gps_link = patch.gps_link || null;
-    dbPatch.gps_lat = gps.lat ?? null;
-    dbPatch.gps_lng = gps.lng ?? null;
+    dbPatch.gps_lat = gps.lat;
+    dbPatch.gps_lng = gps.lng;
   }
-  if (patch.route_number !== undefined) dbPatch.route_number = patch.route_number;
-  if (patch.status !== undefined) dbPatch.status = patch.status;
-  if (patch.product_id !== undefined) dbPatch.product_id = patch.product_id || null;
-  if (patch.product_ids !== undefined) dbPatch.product_ids = patch.product_ids;
-  if (patch.product_name !== undefined) dbPatch.product_name = patch.product_name || null;
-  if (patch.product_code !== undefined) dbPatch.product_code = patch.product_code || null;
-  if (patch.amount !== undefined) dbPatch.amount = patch.amount;
-  if (patch.warranty_months !== undefined) dbPatch.warranty_months = patch.warranty_months;
-  if (patch.payment_method !== undefined) dbPatch.payment_method = patch.payment_method;
-  if (patch.checklist !== undefined) dbPatch.checklist = patch.checklist;
-  if (patch.notes !== undefined) dbPatch.notes = patch.notes || null;
-  if (patch.cancel_reason !== undefined) dbPatch.cancel_reason = patch.cancel_reason || null;
-  if (patch.receipt_image_url !== undefined) dbPatch.receipt_image_url = patch.receipt_image_url || null;
-  if (patch.final_photo_url !== undefined) dbPatch.final_photo_url = patch.final_photo_url || null;
-  if (patch.id_image_url !== undefined) dbPatch.id_image_url = patch.id_image_url || null;
-  if (patch.invoice_url !== undefined) dbPatch.invoice_url = patch.invoice_url || null;
-
-  const { error } = await supabase.from("work_orders").update(dbPatch).eq("id", id);
-  if (error) {
-    console.error("[updateWorkOrder] DB error:", error.message, "patch:", dbPatch);
-    throw new Error(error.message);
+  try {
+    const { error } = await supabase.from("work_orders").update({
+      ...dbPatch,
+      checklist: patch.checklist as any,
+    }).eq("id", id);
+    if (!error) return;
+  } catch { /* fall through */ }
+  const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx >= 0) {
+    orders[idx] = { ...orders[idx], ...dbPatch };
+    lsSet(LS_ORDERS, orders);
   }
 }
 
@@ -438,17 +421,6 @@ export async function deleteOrder(id: string): Promise<void> {
   } catch { /* fall through */ }
   const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
   lsSet(LS_ORDERS, orders.filter(o => o.id !== id));
-}
-
-export async function deleteOrders(ids: string[]): Promise<void> {
-  if (!ids.length) return;
-  try {
-    const { error } = await supabase.from("work_orders").delete().in("id", ids);
-    if (!error) return;
-  } catch { /* fall through */ }
-  const orders = lsGet<WorkOrder[]>(LS_ORDERS, []);
-  const remove = new Set(ids);
-  lsSet(LS_ORDERS, orders.filter(o => !remove.has(o.id)));
 }
 
 export async function cancelOrder(id: string, reason: string): Promise<void> {

@@ -33,33 +33,6 @@ export default function App() {
   const t = translations[lang];
   const isAdmin = user?.role === "admin";
 
-  // Android hardware/browser back button handling.
-  // Priority: open modals → sub-pages → dashboard (exit app).
-  useEffect(() => {
-    if (!user) return;
-    const handler = (e: PopStateEvent) => {
-      const anyModalOpen = invoiceOrder || showMap || showBulkImport || tab === "map";
-      if (anyModalOpen) {
-        // A modal/sub-view is open: close it and stay in app.
-        if (invoiceOrder) setInvoiceOrder(null);
-        else if (showBulkImport) setShowBulkImport(false);
-        else if (showMap) setShowMap(false);
-        else if (tab === "map") setTab("dashboard");
-        // Restore history so the next back still works.
-        history.pushState(null, "", location.href);
-      } else if (tab !== "dashboard") {
-        // On a sub-page: return to dashboard.
-        setTab("dashboard");
-        history.pushState(null, "", location.href);
-      }
-      // On dashboard: let the default back behavior exit the app/page.
-    };
-    // Seed a history entry so we can intercept back.
-    history.pushState(null, "", location.href);
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
-  }, [user, tab, invoiceOrder, showMap, showBulkImport]);
-
   const loadData = async () => {
     setLoading(true);
     const [techs, prods, ords] = await Promise.all([
