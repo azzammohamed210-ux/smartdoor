@@ -1,5 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, Database, Phone, MapPin, ChevronDown, ChevronUp, FileText, Calendar, Filter, X, Trash2, CheckCircle2, Circle, CheckSquare, Square } from "lucide-react";
+import { 
+  Search, Database, Phone, MapPin, ChevronDown, ChevronUp, 
+  FileText, Calendar, Filter, X, Trash2, CheckCircle2, 
+  Circle, CheckSquare, Square, Map as MapIcon 
+} from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import L from "leaflet";
+import { renderToStaticMarkup } from "react-dom/server";
+import "leaflet/dist/leaflet.css";
+
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
 import { fetchArchivedOrders, deleteOrders, toArabicNumber } from "../lib/storage";
@@ -14,6 +24,50 @@ interface Props {
 
 type SortKey = "date" | "name" | "amount";
 type SortDir = "asc" | "desc";
+
+// دالة لاستخراج الإحداثيات من رابط جوجل مابس
+const extractCoords = (link: string | undefined): [number, number] | null => {
+  if (!link) return null;
+  const regex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+  const match = link.match(regex);
+  if (match) {
+    return [parseFloat(match[1]), parseFloat(match[2])];
+  }
+  // محاولة البحث عن أرقام عشرية مباشرة في الرابط
+  const directMatch = link.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (directMatch) {
+    return [parseFloat(directMatch[1]), parseFloat(directMatch[2])];
+  }
+  return null;
+};
+
+// أيقونة مخصصة للماركر بناءً على الحالة
+const createCustomIcon = (status: string) => {
+  const color = status === 'completed' ? '#10b981' : status === 'cancelled' ? '#f43f5e' : '#3b82f6';
+  const html = renderToStaticMarkup(
+    <div style={{
+      backgroundColor: color,
+      width: '32px',
+      height: '32px',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '3px solid white',
+      boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+      color: 'white'
+    }}>
+      <MapPin size={18} fill="currentColor" />
+    </div>
+  );
+  return L.divIcon({
+    html,
+    className: 'custom-marker-icon',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+  });
+};
 
 export default function CustomerDatabaseView({ lang, t, technicians, products }: Props) {
   const [orders, setOrders] = useState<WorkOrder[]>([]);
@@ -31,12 +85,15 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
   const [selectMode, setSelectMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
 
   const load = async () => {
     setLoading(true);
-    setOrders(await fetchArchivedOrders());
+    const data = await fetchArchivedOrders();
+    setOrders(data);
     setLoading(false);
   };
 
@@ -80,6 +137,14 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
   }, [orders, statusFilter, techFilter, dateFrom, dateTo, search, sortKey, sortDir]);
 
   const totalAmount = filtered.reduce((sum, o) => sum + (o.amount || 0), 0);
+  
+  // تجهيز بيانات الخريطة
+  const mapMarkers = useMemo(() => {
+    return filtered
+      .map(o => ({ ...o, coords: extractCoords(o.gps_link) }))
+      .filter(o => o.coords !== null);
+  }, [filtered]);
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(prev => prev === "asc" ? "desc" : "asc");
@@ -207,9 +272,18 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
           <Database className="h-5 w-5 text-blue-600" />
           <h2 className="text-lg font-semibold text-slate-800">{t.customerDatabaseTitle}</h2>
         </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-          {t.recordsCount}: {toArabicNumber(filtered.length)}
-        </span>
+        <div className="flex items-center gap-2">
+            <button 
+                onClick={() => setShowMap(true)}
+                className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-blue-600 shadow-sm ring-1 ring-blue-100 transition hover:bg-blue-50"
+            >
+                <MapIcon className="h-3.5 w-3.5" />
+                {lang === 'ar' ? 'العرض على الخريطة' : 'View on Map'}
+            </button>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                {t.recordsCount}: {toArabicNumber(filtered.length)}
+            </span>
+        </div>
       </div>
 
       {/* Live search */}
@@ -258,7 +332,6 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
       {/* Expandable filters */}
       {showFilters && (
         <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-          {/* Status pills */}
           <div className="flex gap-2 overflow-x-auto pb-1">
             {statusOptions.map(p => (
               <button
@@ -275,7 +348,6 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
             ))}
           </div>
 
-          {/* Technician filter */}
           {technicians.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               <button
@@ -300,7 +372,6 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
             </div>
           )}
 
-          {/* Date range */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4 text-slate-400" />
@@ -344,12 +415,7 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
         </div>
       )}
 
-      {/* Long-press hint */}
-      {!selectMode && filtered.length > 0 && (
-        <p className="text-center text-xs text-slate-400">{t.longPressHint}</p>
-      )}
-
-      {/* Records */}
+      {/* Records List */}
       {loading ? (
         <div className="py-20 text-center text-slate-400">...</div>
       ) : filtered.length === 0 ? (
@@ -435,9 +501,88 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
         </div>
       )}
 
+      {/* Map Modal */}
+      {showMap && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-slate-50" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <div className="flex items-center justify-between bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <MapIcon className="h-5 w-5 text-blue-600" />
+              <h2 className="font-bold text-slate-800">
+                {lang === 'ar' ? 'خريطة مواقع العملاء' : 'Customer Locations Map'}
+              </h2>
+            </div>
+            <button 
+                onClick={() => setShowMap(false)}
+                className="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <div className="relative flex-1">
+            <MapContainer 
+              center={[23.5859, 58.4059]} 
+              zoom={10} 
+              className="h-full w-full"
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              <MarkerClusterGroup>
+                {mapMarkers.map((marker) => (
+                  <Marker 
+                    key={marker.id} 
+                    position={marker.coords!} 
+                    icon={createCustomIcon(marker.status)}
+                  >
+                    <Popup>
+                      <div className={`p-1 text-right ${lang === 'ar' ? 'font-sans' : ''}`}>
+                        <p className="font-bold text-slate-900">{marker.client_name}</p>
+                        <p className="text-xs text-slate-500">{marker.order_number}</p>
+                        <p className="mt-1 text-sm font-semibold text-blue-600">
+                          {toArabicNumber(marker.amount)} {lang === 'ar' ? 'ر.ع' : 'OMR'}
+                        </p>
+                        <button 
+                          onClick={() => {
+                            setSelected(marker);
+                            setShowMap(false);
+                          }}
+                          className="mt-2 w-full rounded-md bg-slate-100 py-1 text-xs font-bold text-slate-600"
+                        >
+                          {lang === 'ar' ? 'عرض التفاصيل' : 'View Details'}
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MarkerClusterGroup>
+            </MapContainer>
+
+            {/* Map Legend */}
+            <div className="absolute bottom-6 left-6 z-[1000] rounded-2xl bg-white/90 p-3 shadow-xl backdrop-blur-sm ring-1 ring-slate-200">
+               <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-emerald-500"></div>
+                    <span className="text-xs font-medium text-slate-600">{t.completed}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-rose-500"></div>
+                    <span className="text-xs font-medium text-slate-600">{t.cancelled}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                    <span className="text-xs font-medium text-slate-600">{t.other}</span>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete confirmation dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex justify-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-100">
