@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { Plus, Phone, MessageCircle, MapPin, Play, CheckCircle2, Search, Trash2, FileText } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
 import OrderDetailsModal from "./OrderDetailsModal";
+import ManagerEditModal from "./ManagerEditModal";
 import InvoicePreviewModal from "./InvoicePreviewModal";
 import { toArabicNumber, deleteOrder, startWork } from "../lib/storage";
 
@@ -22,16 +23,51 @@ type StatusFilter = "all" | "pending" | "in_progress" | "completed";
 export default function WorkOrdersView({ lang, t, orders, technicians, products, isAdmin, currentTechId, onRefresh }: Props) {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<WorkOrder | null>(null);
+  const [managerEdit, setManagerEdit] = useState<WorkOrder | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [techFilter, setTechFilter] = useState<string>("all");
   const [toast, setToast] = useState<string>("");
   const [invoiceOrder, setInvoiceOrder] = useState<WorkOrder | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
   }, []);
+
+  const routeSequence = useMemo(() => {
+    const seqMap = new Map<string, number>();
+    const perTech: Record<string, WorkOrder[]> = {};
+    orders
+      .filter(o => o.technician_id && o.status !== "cancelled")
+      .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
+      .forEach(o => {
+        const tid = o.technician_id!;
+        (perTech[tid] ||= []).push(o);
+      });
+    Object.entries(perTech).forEach(([tid, list]) => {
+      list.forEach((o, idx) => seqMap.set(`${tid}:${o.id}`, idx + 1));
+    });
+    return seqMap;
+  }, [orders]);
+
+  const routeOf = useCallback((o: WorkOrder): number | null => {
+    if (!o.technician_id || o.status === "cancelled") return null;
+    return routeSequence.get(`${o.technician_id}:${o.id}`) ?? null;
+  }, [routeSequence]);
+
+  const startLongPress = (o: WorkOrder) => {
+    longPressTimer.current = setTimeout(() => {
+      setManagerEdit(o);
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   const filtered = useMemo(() => {
     let r = orders;
@@ -121,14 +157,29 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
         </div>
       )}
 
+      {isAdmin && filtered.length > 0 && (
+        <p className="px-1 pb-1 text-center text-xs text-slate-400">{t.longPressEditHint}</p>
+      )}
+
       {filtered.length === 0 ? (
         <div className="rounded-2xl bg-white p-12 text-center text-slate-400 shadow-sm ring-1 ring-slate-100">
           {t.noOrders}
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((o) => (
-            <div key={o.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+          {filtered.map((o) => {
+            const seq = routeOf(o);
+            return (
+            <div
+              key={o.id}
+              className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]"
+              onTouchStart={() => isAdmin && startLongPress(o)}
+              onTouchEnd={cancelLongPress}
+              onTouchMove={cancelLongPress}
+              onMouseDown={() => isAdmin && startLongPress(o)}
+              onMouseUp={cancelLongPress}
+              onMouseLeave={cancelLongPress}
+            >
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
@@ -206,15 +257,15 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                   </div>
                 </div>
               </div>
-              {o.route_number && (
+              {seq !== null && (
                 <div className="border-t border-slate-100 bg-gradient-to-r from-blue-50 to-slate-50 px-4 py-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                    {t.routeLabel} {toArabicNumber(o.route_number)}
+                    {t.routeLabel} {toArabicNumber(seq)}
                   </span>
                 </div>
               )}
             </div>
-          ))}
+          );})}
         </div>
       )}
 
@@ -258,6 +309,17 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
           products={products}
           onConfirm={() => setInvoiceOrder(null)}
           onClose={() => setInvoiceOrder(null)}
+        />
+      )}
+      {managerEdit && (
+        <ManagerEditModal
+          lang={lang}
+          t={t}
+          order={managerEdit}
+          technicians={technicians}
+          products={products}
+          onClose={() => setManagerEdit(null)}
+          onSaved={() => onRefresh()}
         />
       )}
     </div>

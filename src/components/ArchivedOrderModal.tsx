@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Phone, MessageCircle, MapPin, FileText, Printer, Download, User, Wrench, Calendar, CreditCard, Shield } from "lucide-react";
+import { X, Phone, MessageCircle, MapPin, FileText, Printer, Download, User, Wrench, Calendar, CreditCard, Shield, Paperclip } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { translations, warrantyOptions, categoryLabels } from "../locales";
 import type { WorkOrder, Product } from "../types";
@@ -103,18 +103,30 @@ export default function ArchivedOrderModal({ lang, t, order, products, onClose }
               </Section>
             )}
 
-            {/* Images */}
-            {order.id_image_url && (
-              <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
-                <p className="mb-2 text-xs font-medium text-slate-500">{t.idImageAttached}</p>
-                <img src={order.id_image_url} alt="ID" className="w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
-              </div>
-            )}
-            {order.final_photo_url && (
-              <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
-                <p className="mb-2 text-xs font-medium text-slate-500">{t.finalPhotoAttached}</p>
-                <img src={order.final_photo_url} alt="final" className="w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
-              </div>
+            {/* Attachments */}
+            {(order.id_image_url || (order.payment_method === "bank" && order.receipt_image_url) || order.final_photo_url) && (
+              <Section title={lang === "ar" ? "المرفقات" : "Attachments"} icon={<Paperclip className="h-4 w-4" />}>
+                <div className="space-y-3">
+                  {order.id_image_url && (
+                    <div>
+                      <p className="mb-1.5 text-xs font-medium text-slate-500">{lang === "ar" ? "صورة هوية العميل" : "Client ID Image"}</p>
+                      <img src={order.id_image_url} alt="ID" className="w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
+                    </div>
+                  )}
+                  {order.payment_method === "bank" && order.receipt_image_url && (
+                    <div>
+                      <p className="mb-1.5 text-xs font-medium text-slate-500">{lang === "ar" ? "إيصال التحويل البنكي" : "Bank Transfer Receipt"}</p>
+                      <img src={order.receipt_image_url} alt="receipt" className="w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
+                    </div>
+                  )}
+                  {order.final_photo_url && (
+                    <div>
+                      <p className="mb-1.5 text-xs font-medium text-slate-500">{lang === "ar" ? "صورة إنجاز التركيب" : "Installation Completion Photo"}</p>
+                      <img src={order.final_photo_url} alt="final" className="w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 200 }} />
+                    </div>
+                  )}
+                </div>
+              </Section>
             )}
           </div>
 
