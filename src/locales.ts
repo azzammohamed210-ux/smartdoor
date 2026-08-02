@@ -213,6 +213,7 @@ export interface Strings {
   editOrderFields: string;
   changesSaved: string;
   longPressEditHint: string;
+  viewCustomersMap: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -430,6 +431,7 @@ export const translations: Record<Lang, Strings> = {
     editOrderFields: "تعديل بيانات الأمر",
     changesSaved: "تم حفظ التعديلات بنجاح",
     longPressEditHint: "اضغط مطولاً على أي أمر لتعديله",
+    viewCustomersMap: "عرض العملاء على الخريطة",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -645,6 +647,7 @@ export const translations: Record<Lang, Strings> = {
     editOrderFields: "Edit Order Details",
     changesSaved: "Changes saved successfully",
     longPressEditHint: "Long-press any order to edit it",
+    viewCustomersMap: "View Customers on Map",
   },
 };
 

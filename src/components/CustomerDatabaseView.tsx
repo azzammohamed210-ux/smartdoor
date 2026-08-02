@@ -4,6 +4,7 @@ import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
 import { fetchArchivedOrders, deleteOrders, toArabicNumber } from "../lib/storage";
 import ArchivedOrderModal from "./ArchivedOrderModal";
+import MapView from "./MapView";
 
 interface Props {
   lang: Lang;
@@ -31,6 +32,7 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
   const [selectMode, setSelectMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
 
@@ -207,9 +209,19 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
           <Database className="h-5 w-5 text-blue-600" />
           <h2 className="text-lg font-semibold text-slate-800">{t.customerDatabaseTitle}</h2>
         </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-          {t.recordsCount}: {toArabicNumber(filtered.length)}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMap(true)}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            {t.viewCustomersMap}
+          </button>
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+            {t.recordsCount}: {toArabicNumber(filtered.length)}
+          </span>
+        </div>
       </div>
 
       {/* Live search */}
@@ -475,6 +487,18 @@ export default function CustomerDatabaseView({ lang, t, technicians, products }:
           order={selected}
           products={products}
           onClose={() => setSelected(null)}
+        />
+      )}
+
+      {/* Map modal */}
+      {showMap && (
+        <MapView
+          lang={lang}
+          t={t}
+          orders={filtered}
+          technicians={technicians}
+          isAdmin={true}
+          onClose={() => setShowMap(false)}
         />
       )}
     </div>
