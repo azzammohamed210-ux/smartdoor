@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { X, Check, MapPin, Upload, ImageIcon, Crosshair, XCircle, Package } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { X, Check, MapPin, Upload, ImageIcon, Crosshair, XCircle, Package, ScanLine, Loader2 } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { checklistItems, warrantyOptions } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
@@ -16,9 +16,10 @@ interface Props {
   currentTechId?: string;
   onClose: () => void;
   onRefresh: () => void;
+  showToast: (msg: string, type?: "success" | "error" | "info", icon?: "check" | "cancel" | "rocket" | "cash") => void;
 }
 
-export default function OrderDetailsModal({ mode, lang, t, order, technicians, products, currentTechId, onClose, onRefresh }: Props) {
+export default function OrderDetailsModal({ mode, lang, t, order, technicians, products, currentTechId, onClose, onRefresh, showToast }: Props) {
   const isCreate = mode === "create";
   const [technicianId, setTechnicianId] = useState(order?.technician_id || "");
   const [clientName, setClientName] = useState(order?.client_name || "");
@@ -43,6 +44,10 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
+  const [ocrScanning, setOcrScanning] = useState(false);
+  const [ocrResult, setOcrResult] = useState<string | null>(null);
+  const [ocrEdited, setOcrEdited] = useState("");
+  const ocrFileRef = useRef<HTMLInputElement>(null);
 
   const autoTotal = useMemo(() => {
     return products
@@ -77,6 +82,57 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  };
+
+  const handleOcrScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setOcrScanning(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setIdImage(dataUrl);
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("eng+ara", 1, {
+        logger: () => {},
+      });
+      const { data: { text } } = await worker.recognize(dataUrl);
+      await worker.terminate();
+      // Extract name: look for lines with Arabic or English name patterns
+      const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 2);
+      // Try to find a name-like line (Arabic name or English name)
+      let extractedName = "";
+      // Look for "Name" label in English or Arabic
+      const nameIdx = lines.findIndex(l => /name|اسم|الاسم/i.test(l));
+      if (nameIdx >= 0 && nameIdx + 1 < lines.length) {
+        extractedName = lines[nameIdx + 1];
+      } else {
+        // Try to find the longest Arabic text line as a fallback
+        const arabicLines = lines.filter(l => /[\u0600-\u06FF]{3,}/.test(l));
+        if (arabicLines.length > 0) {
+          extractedName = arabicLines.sort((a, b) => b.length - a.length)[0];
+        } else {
+          // Fallback: first non-numeric line
+          const nonNumeric = lines.find(l => !/^\d+$/.test(l.replace(/[\s\-:]/g, "")));
+          extractedName = nonNumeric || "";
+        }
+      }
+      // Clean up extracted name
+      extractedName = extractedName.replace(/[^\u0600-\u06FFa-zA-Z\s]/g, "").trim();
+      setOcrResult(extractedName || "");
+      setOcrEdited(extractedName || "");
+    } catch (err) {
+      setOcrResult("");
+      setOcrEdited("");
+    } finally {
+      setOcrScanning(false);
+      if (ocrFileRef.current) ocrFileRef.current.value = "";
+    }
+  };
+
+  const confirmOcrName = () => {
+    setClientName(ocrEdited.trim());
+    setOcrResult(null);
+    setOcrEdited("");
   };
 
   const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,6 +175,7 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
           gps_link: gpsLink,
           notes: notes,
         });
+        showToast(t.toastOrderCreated, "success", "check");
         onRefresh();
         onClose();
       } else if (order) {
@@ -167,6 +224,7 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
         } as WorkOrder;
         setPendingOrder(fullOrder);
         setSuccessToast(true);
+        showToast(t.toastOrderCompleted, "success", "rocket");
         setTimeout(() => {
           setSuccessToast(false);
           onRefresh();
@@ -185,6 +243,7 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
     setSaving(true);
     try {
       await cancelOrder(order!.id, cancelReason.trim());
+      showToast(t.toastOrderCancelled, "error", "cancel");
       onRefresh();
       onClose();
     } catch (e: any) {

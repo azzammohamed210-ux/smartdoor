@@ -16,25 +16,20 @@ interface Props {
   isAdmin: boolean;
   currentTechId?: string;
   onRefresh: () => void;
+  showToast: (msg: string, type?: "success" | "error" | "info", icon?: "check" | "cancel" | "rocket" | "cash") => void;
 }
 
 type StatusFilter = "all" | "pending" | "in_progress" | "completed";
 
-export default function WorkOrdersView({ lang, t, orders, technicians, products, isAdmin, currentTechId, onRefresh }: Props) {
+export default function WorkOrdersView({ lang, t, orders, technicians, products, isAdmin, currentTechId, onRefresh, showToast }: Props) {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<WorkOrder | null>(null);
   const [managerEdit, setManagerEdit] = useState<WorkOrder | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [techFilter, setTechFilter] = useState<string>("all");
-  const [toast, setToast] = useState<string>("");
   const [invoiceOrder, setInvoiceOrder] = useState<WorkOrder | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 2500);
-  }, []);
 
   const routeSequence = useMemo(() => {
     const seqMap = new Map<string, number>();
@@ -269,12 +264,6 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
         </div>
       )}
 
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl bg-slate-800 px-5 py-3 text-sm font-medium text-white shadow-xl">
-          {toast}
-        </div>
-      )}
-
       {showNew && isAdmin && (
         <OrderDetailsModal
           mode="create"
@@ -286,6 +275,7 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
           currentTechId={currentTechId}
           onClose={() => setShowNew(false)}
           onRefresh={onRefresh}
+          showToast={showToast}
         />
       )}
       {selected && (
@@ -299,6 +289,7 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
           currentTechId={currentTechId}
           onClose={() => { setSelected(null); onRefresh(); }}
           onRefresh={onRefresh}
+          showToast={showToast}
         />
       )}
       {invoiceOrder && (

@@ -14,11 +14,12 @@ interface Props {
   technicians: Technician[];
   isAdmin: boolean;
   onRefresh: () => void;
+  showToast: (msg: string, type?: "success" | "error" | "info", icon?: "check" | "cancel" | "rocket" | "cash") => void;
 }
 
 type CatFilter = "all" | "lock" | "door";
 
-export default function InventoryView({ lang, t, products, orders, technicians, isAdmin, onRefresh }: Props) {
+export default function InventoryView({ lang, t, products, orders, technicians, isAdmin, onRefresh, showToast }: Props) {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<CatFilter>("all");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -164,6 +165,7 @@ export default function InventoryView({ lang, t, products, orders, technicians, 
           technicians={technicians}
           products={products}
           onClose={() => setShowConsumption(false)}
+          showToast={showToast}
         />
       )}
     </div>

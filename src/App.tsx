@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabaseClient";
 import { translations, type Lang } from "./locales";
 import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, isTechnicianActive, type MockUser } from "./lib/storage";
 import type { Technician, Product, WorkOrder } from "./types";
+import { useToast } from "./components/Toast";
 import LanguageSwitcher from "./components/LanguageSwitcher";
 import LoginScreen from "./components/LoginScreen";
 import DashboardView from "./components/DashboardView";
@@ -18,6 +19,7 @@ import CustomerDatabaseView from "./components/CustomerDatabaseView";
 import PWAUpdateToast from "./components/PWAUpdateToast";
 
 export default function App() {
+  const { showToast } = useToast();
   const [lang, setLang] = useState<Lang>("ar");
   const [user, setUser] = useState<MockUser | null>(getCurrentUser());
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -195,15 +197,16 @@ export default function App() {
                 isAdmin={isAdmin}
                 currentTechId={currentTech?.id}
                 onRefresh={loadData}
+                showToast={showToast}
               />
             )}
             {tab === "inventory" && (
-              <InventoryView lang={lang} t={t} products={products} orders={visibleOrders} technicians={technicians} isAdmin={isAdmin} onRefresh={loadData} />
+              <InventoryView lang={lang} t={t} products={products} orders={visibleOrders} technicians={technicians} isAdmin={isAdmin} onRefresh={loadData} showToast={showToast} />
             )}
             {tab === "management" && isAdmin && (
               <div className="space-y-8">
                 <TechniciansView lang={lang} t={t} technicians={technicians} onRefresh={loadData} />
-                <InventoryView lang={lang} t={t} products={products} orders={visibleOrders} technicians={technicians} isAdmin={isAdmin} onRefresh={loadData} />
+                <InventoryView lang={lang} t={t} products={products} orders={visibleOrders} technicians={technicians} isAdmin={isAdmin} onRefresh={loadData} showToast={showToast} />
               </div>
             )}
             {tab === "customers" && isAdmin && (

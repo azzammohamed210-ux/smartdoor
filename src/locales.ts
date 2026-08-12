@@ -231,6 +231,24 @@ export interface Strings {
   cashTotalForDay: string;
   cashTotalAllTime: string;
   consumptionGrandTotal: string;
+  scanIdOcr: string;
+  ocrScanning: string;
+  ocrConfirmTitle: string;
+  ocrConfirmName: string;
+  ocrNoName: string;
+  ocrConfirm: string;
+  ocrRetake: string;
+  invoiceProduct: string;
+  invoiceQty: string;
+  invoiceUnitPrice: string;
+  invoiceLineTotal: string;
+  invoiceGrandTotal: string;
+  invoiceAmountPaid: string;
+  invoiceRemaining: string;
+  toastOrderCreated: string;
+  toastOrderCancelled: string;
+  toastOrderCompleted: string;
+  toastCashCollected: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -466,6 +484,24 @@ export const translations: Record<Lang, Strings> = {
     cashTotalForDay: "إجمالي النقدي لليوم",
     cashTotalAllTime: "إجمالي النقدي الكلي",
     consumptionGrandTotal: "الإجمالي الكلي للتركيبات",
+    scanIdOcr: "مسح الهوية (OCR)",
+    ocrScanning: "جاري مسح الهوية...",
+    ocrConfirmTitle: "تأكيد الاسم المستخرج من الهوية",
+    ocrConfirmName: "الاسم المستخرج",
+    ocrNoName: "لم يتم التعرف على الاسم، يرجى الإدخال يدوياً",
+    ocrConfirm: "تأكيد وإدخال الاسم",
+    ocrRetake: "إعادة المسح",
+    invoiceProduct: "المنتج",
+    invoiceQty: "الكمية",
+    invoiceUnitPrice: "سعر الوحدة",
+    invoiceLineTotal: "الإجمالي",
+    invoiceGrandTotal: "المجموع الإجمالي",
+    invoiceAmountPaid: "المبلغ المدفوع",
+    invoiceRemaining: "المتبقي",
+    toastOrderCreated: "تم إضافة أمر عمل جديد بنجاح 📋",
+    toastOrderCancelled: "تم إلغاء أمر العمل ❌",
+    toastOrderCompleted: "تم إكمال أمر العمل بنجاح وتسجيل الاستهلاك 🚀",
+    toastCashCollected: "تم تأكيد تحصيل المبلغ النقدي للفني {name} بنجاح 💰",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -699,6 +735,24 @@ export const translations: Record<Lang, Strings> = {
     cashTotalForDay: "Total Cash Today",
     cashTotalAllTime: "Total Cash All-Time",
     consumptionGrandTotal: "Grand Total Installations",
+    scanIdOcr: "Scan ID (OCR)",
+    ocrScanning: "Scanning ID...",
+    ocrConfirmTitle: "Confirm Name Extracted from ID",
+    ocrConfirmName: "Extracted Name",
+    ocrNoName: "Could not recognize name, please enter manually",
+    ocrConfirm: "Confirm & Use Name",
+    ocrRetake: "Re-scan",
+    invoiceProduct: "Product",
+    invoiceQty: "Qty",
+    invoiceUnitPrice: "Unit Price",
+    invoiceLineTotal: "Total",
+    invoiceGrandTotal: "Grand Total",
+    invoiceAmountPaid: "Amount Paid",
+    invoiceRemaining: "Remaining",
+    toastOrderCreated: "New work order added successfully 📋",
+    toastOrderCancelled: "Work order cancelled ❌",
+    toastOrderCompleted: "Work order completed and consumption recorded 🚀",
+    toastCashCollected: "Cash collection confirmed for {name} 💰",
   },
 };
 

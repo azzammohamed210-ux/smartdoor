@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { X, Calendar, BarChart3, ClipboardList, DollarSign, CheckCircle2 } from "lucide-react";
+import { X, Calendar, BarChart3, ClipboardList, CheckCircle2 } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
 import { toArabicNumber, fetchAllCompletedOrders, fetchCashCollections, markCashCollected, type CashCollection } from "../lib/storage";
@@ -11,6 +11,7 @@ interface Props {
   technicians: Technician[];
   products: Product[];
   onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error" | "info", icon?: "check" | "cancel" | "rocket" | "cash") => void;
 }
 
 type Mode = "today" | "date" | "full";
@@ -27,7 +28,7 @@ function toArabicDate(dateStr: string, lang: Lang): string {
   return dateStr;
 }
 
-export default function ConsumptionReportModal({ lang, t, orders, technicians, products, onClose }: Props) {
+export default function ConsumptionReportModal({ lang, t, orders, technicians, products, onClose, showToast }: Props) {
   const todayStr = toDateStr(new Date());
   const [mode, setMode] = useState<Mode>("today");
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -144,6 +145,8 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
     }
     await refreshCollections();
     setCollectingTechs(prev => { const next = new Set(prev); next.delete(techId); return next; });
+    const techName = technicians.find(tc => tc.id === techId)?.name || "";
+    showToast(t.toastCashCollected.replace("{name}", techName), "success", "cash");
   };
 
   const totalInstallations = filteredOrders.length;
@@ -212,7 +215,7 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
           {/* Cash summary badge */}
           {totalCashForView > 0 && (
             <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5">
-              <DollarSign className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-bold text-amber-600">{lang === "ar" ? "ر.ع" : "OMR"}</span>
               <span className="text-sm font-medium text-amber-700">
                 {mode === "full" ? t.cashTotalAllTime : t.cashTotalForDay}: {toArabicNumber(Number(totalCashForView.toFixed(3)))} {lang === "ar" ? "ر.ع" : "OMR"}
               </span>
@@ -268,7 +271,7 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
                             </>
                           ) : (
                             <>
-                              <DollarSign className="h-3.5 w-3.5" />
+                              <span className="font-bold">{lang === "ar" ? "ر.ع" : "OMR"}</span>
                               {t.cashCollection}: {toArabicNumber(Number(cashAmount.toFixed(3)))} {lang === "ar" ? "ر.ع" : "OMR"}
                             </>
                           )}
