@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
-import { X, Calendar, BarChart3, ClipboardList } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { X, Calendar, BarChart3, ClipboardList, DollarSign, CheckCircle2 } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
-import { toArabicNumber } from "../lib/storage";
+import { toArabicNumber, fetchAllCompletedOrders, fetchCashCollections, markCashCollected, type CashCollection } from "../lib/storage";
 
 interface Props {
   lang: Lang;
@@ -19,21 +19,48 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function toArabicDate(dateStr: string, lang: Lang): string {
+  if (lang === "ar") {
+    const [y, m, d] = dateStr.split("-");
+    return `${toArabicNumber(parseInt(d))}/${toArabicNumber(parseInt(m))}/${toArabicNumber(parseInt(y))}`;
+  }
+  return dateStr;
+}
+
 export default function ConsumptionReportModal({ lang, t, orders, technicians, products, onClose }: Props) {
   const todayStr = toDateStr(new Date());
   const [mode, setMode] = useState<Mode>("today");
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [allCompleted, setAllCompleted] = useState<WorkOrder[]>([]);
+  const [collections, setCollections] = useState<CashCollection[]>([]);
+  const [collectingTechs, setCollectingTechs] = useState<Set<string>>(new Set());
 
-  const completedOrders = useMemo(() => orders.filter(o => o.status === "completed"), [orders]);
+  // Fetch ALL completed orders (including archived) + existing cash collections on mount
+  useEffect(() => {
+    (async () => {
+      const [completed, cols] = await Promise.all([
+        fetchAllCompletedOrders(),
+        fetchCashCollections(),
+      ]);
+      setAllCompleted(completed);
+      setCollections(cols);
+    })();
+  }, []);
 
+  const refreshCollections = useCallback(async () => {
+    const cols = await fetchCashCollections();
+    setCollections(cols);
+  }, []);
+
+  // Filter by mode
   const filteredOrders = useMemo(() => {
-    if (mode === "full") return completedOrders;
+    if (mode === "full") return allCompleted;
     const dateStr = mode === "today" ? todayStr : selectedDate;
-    return completedOrders.filter(o => {
+    return allCompleted.filter(o => {
       const oDate = new Date(o.updated_at || o.created_at);
       return toDateStr(oDate) === dateStr;
     });
-  }, [completedOrders, mode, todayStr, selectedDate]);
+  }, [allCompleted, mode, todayStr, selectedDate]);
 
   // Per-technician breakdown
   const techBreakdown = useMemo(() => {
@@ -81,7 +108,46 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
     return Array.from(map.values()).sort((a, b) => b.qty - a.qty);
   }, [filteredOrders, products]);
 
+  // Cash amount per technician for the current view
+  const techCashMap = useMemo(() => {
+    const map = new Map<string, { total: number; orders: WorkOrder[] }>();
+    for (const o of filteredOrders) {
+      if (!o.technician_id || o.payment_method !== "cash") continue;
+      let entry = map.get(o.technician_id);
+      if (!entry) {
+        entry = { total: 0, orders: [] };
+        map.set(o.technician_id, entry);
+      }
+      entry.total += o.amount || 0;
+      entry.orders.push(o);
+    }
+    return map;
+  }, [filteredOrders]);
+
+  // Check if a technician's cash is already collected for the current view
+  const isTechCollected = useCallback((techId: string): boolean => {
+    if (mode === "full") {
+      return collections.some(c => c.technician_id === techId);
+    }
+    const dateStr = mode === "today" ? todayStr : selectedDate;
+    return collections.some(c => c.technician_id === techId && c.collection_date === dateStr);
+  }, [collections, mode, todayStr, selectedDate]);
+
+  // Handle cash collection
+  const handleCollect = async (techId: string) => {
+    const cashData = techCashMap.get(techId);
+    if (!cashData || cashData.orders.length === 0) return;
+    setCollectingTechs(prev => new Set(prev).add(techId));
+    const dateStr = mode === "today" ? todayStr : mode === "date" ? selectedDate : todayStr;
+    for (const order of cashData.orders) {
+      await markCashCollected(techId, order.id, order.amount, dateStr);
+    }
+    await refreshCollections();
+    setCollectingTechs(prev => { const next = new Set(prev); next.delete(techId); return next; });
+  };
+
   const totalInstallations = filteredOrders.length;
+  const totalCashForView = Array.from(techCashMap.values()).reduce((s, e) => s + e.total, 0);
 
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm">
@@ -136,12 +202,22 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
               {mode === "full"
                 ? (lang === "ar" ? "جميع التواريخ" : "All dates")
                 : mode === "today"
-                  ? todayStr
-                  : selectedDate}
+                  ? toArabicDate(todayStr, lang)
+                  : toArabicDate(selectedDate, lang)}
               {" · "}
               {t.consumptionTotalInstallations}: {toArabicNumber(totalInstallations)}
             </span>
           </div>
+
+          {/* Cash summary badge */}
+          {totalCashForView > 0 && (
+            <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5">
+              <DollarSign className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-medium text-amber-700">
+                {mode === "full" ? t.cashTotalAllTime : t.cashTotalForDay}: {toArabicNumber(Number(totalCashForView.toFixed(3)))} {lang === "ar" ? "ر.ع" : "OMR"}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Technician cards */}
@@ -155,30 +231,58 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
               {techBreakdown.map(({ tech, products: prodMap }) => {
                 const entries = Array.from(prodMap.values()).sort((a, b) => b.qty - a.qty);
                 const techTotal = entries.reduce((s, e) => s + e.qty, 0);
+                const cashData = techCashMap.get(tech.id);
+                const cashAmount = cashData?.total || 0;
+                const hasCash = cashAmount > 0;
+                const collected = isTechCollected(tech.id);
+                const isCollecting = collectingTechs.has(tech.id);
+
                 return (
                   <div key={tech.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 transition hover:shadow-md">
-                    {/* Card header: technician name */}
-                    <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                    {/* Card header: technician name + cash button */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white text-sm font-bold">
                           {tech.name.charAt(0)}
                         </div>
                         <span className="font-semibold text-white">{tech.name}</span>
+                        <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
+                          {toArabicNumber(techTotal)} {lang === "ar" ? "تركيب" : "installs"}
+                        </span>
                       </div>
-                      <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
-                        {toArabicNumber(techTotal)} {lang === "ar" ? "تركيب" : "installs"}
-                      </span>
+                      {/* Cash collection button */}
+                      {hasCash && (
+                        <button
+                          onClick={() => handleCollect(tech.id)}
+                          disabled={collected || isCollecting}
+                          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition-all ${
+                            collected
+                              ? "bg-emerald-500 text-white shadow-emerald-300/50"
+                              : "bg-amber-500 text-white hover:bg-amber-600 hover:shadow-md active:scale-95"
+                          } ${isCollecting ? "opacity-60" : ""}`}
+                        >
+                          {collected ? (
+                            <>
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {t.cashCollected}: {toArabicNumber(Number(cashAmount.toFixed(3)))} {lang === "ar" ? "ر.ع" : "OMR"}
+                            </>
+                          ) : (
+                            <>
+                              <DollarSign className="h-3.5 w-3.5" />
+                              {t.cashCollection}: {toArabicNumber(Number(cashAmount.toFixed(3)))} {lang === "ar" ? "ر.ع" : "OMR"}
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                     {/* Card body: products list */}
                     <div className="divide-y divide-slate-50">
                       {entries.map(({ product, qty }) => (
                         <div key={product.id} className="flex items-center justify-between px-4 py-2.5">
-                          {/* Right side (in RTL): product name */}
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-slate-700">{product.name_ar}</span>
                             <span className="text-xs text-slate-400">{product.code}</span>
                           </div>
-                          {/* Left side: quantity */}
                           <div className="flex items-center gap-1.5">
                             <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-sm font-bold text-blue-700">
                               {toArabicNumber(qty)}
@@ -198,7 +302,9 @@ export default function ConsumptionReportModal({ lang, t, orders, technicians, p
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5 text-blue-400" />
-                      <span className="font-bold text-white">{t.consumptionTotalInstallations}</span>
+                      <span className="font-bold text-white">
+                        {mode === "full" ? t.consumptionGrandTotal : t.consumptionTotalInstallations}
+                      </span>
                     </div>
                     <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-xs font-medium text-blue-300">
                       {toArabicNumber(grandTotal.reduce((s, e) => s + e.qty, 0))} {lang === "ar" ? "وحدة" : "units"}

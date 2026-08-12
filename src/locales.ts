@@ -225,6 +225,12 @@ export interface Strings {
   consumptionProduct: string;
   consumptionTechnician: string;
   consumptionAutoPriced: string;
+  cashCollection: string;
+  cashCollected: string;
+  cashCollectAmount: string;
+  cashTotalForDay: string;
+  cashTotalAllTime: string;
+  consumptionGrandTotal: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -454,6 +460,12 @@ export const translations: Record<Lang, Strings> = {
     consumptionProduct: "المنتج",
     consumptionTechnician: "الفني",
     consumptionAutoPriced: "تم حساب المبلغ تلقائياً",
+    cashCollection: "تحصيل النقدي",
+    cashCollected: "تم تحصيل مبلغ نقدي",
+    cashCollectAmount: "تحصيل",
+    cashTotalForDay: "إجمالي النقدي لليوم",
+    cashTotalAllTime: "إجمالي النقدي الكلي",
+    consumptionGrandTotal: "الإجمالي الكلي للتركيبات",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -681,6 +693,12 @@ export const translations: Record<Lang, Strings> = {
     consumptionProduct: "Product",
     consumptionTechnician: "Technician",
     consumptionAutoPriced: "Amount auto-calculated",
+    cashCollection: "Cash Collection",
+    cashCollected: "Cash collected",
+    cashCollectAmount: "Collect",
+    cashTotalForDay: "Total Cash Today",
+    cashTotalAllTime: "Total Cash All-Time",
+    consumptionGrandTotal: "Grand Total Installations",
   },
 };
 

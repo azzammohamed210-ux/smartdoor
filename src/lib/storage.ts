@@ -245,6 +245,75 @@ export async function fetchWorkOrders(techId?: string): Promise<WorkOrder[]> {
   }));
 }
 
+export async function fetchAllCompletedOrders(): Promise<WorkOrder[]> {
+  try {
+    const { data, error } = await supabase
+      .from("work_orders")
+      .select("*")
+      .eq("status", "completed")
+      .order("updated_at", { ascending: false });
+    if (!error && data) {
+      const techs = await fetchTechnicians();
+      const prods = await fetchProducts();
+      return (data as any[]).map(r => {
+        const gps = r.gps_link || (r.gps_lat && r.gps_lng ? `https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}` : undefined);
+        return {
+          ...r,
+          technician_name: techs.find(t => t.id === r.technician_id)?.name,
+          product_name: prods.find(p => p.id === r.product_id)?.name_ar,
+          product_code: prods.find(p => p.id === r.product_id)?.code,
+          gps_link: gps,
+        } as WorkOrder;
+      });
+    }
+  } catch { /* fall through */ }
+  return [];
+}
+
+export interface CashCollection {
+  id: string;
+  technician_id: string;
+  order_id: string;
+  amount: number;
+  collected: boolean;
+  collected_at: string;
+  collection_date: string;
+}
+
+export async function fetchCashCollections(): Promise<CashCollection[]> {
+  try {
+    const { data, error } = await supabase
+      .from("cash_collections")
+      .select("*")
+      .order("collected_at", { ascending: false });
+    if (!error && data) return data as CashCollection[];
+  } catch { /* fall through */ }
+  return [];
+}
+
+export async function markCashCollected(
+  technician_id: string,
+  order_id: string,
+  amount: number,
+  collection_date: string,
+): Promise<CashCollection | null> {
+  try {
+    const { data, error } = await supabase
+      .from("cash_collections")
+      .insert({
+        technician_id,
+        order_id,
+        amount,
+        collected: true,
+        collection_date,
+      })
+      .select("*")
+      .single();
+    if (!error && data) return data as CashCollection;
+  } catch { /* fall through */ }
+  return null;
+}
+
 export async function fetchArchivedOrders(): Promise<WorkOrder[]> {
   try {
     const { data, error } = await supabase
