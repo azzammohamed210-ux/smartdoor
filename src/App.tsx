@@ -198,12 +198,12 @@ export default function App() {
               />
             )}
             {tab === "inventory" && (
-              <InventoryView lang={lang} t={t} products={products} isAdmin={isAdmin} onRefresh={loadData} />
+              <InventoryView lang={lang} t={t} products={products} orders={visibleOrders} technicians={technicians} isAdmin={isAdmin} onRefresh={loadData} />
             )}
             {tab === "management" && isAdmin && (
               <div className="space-y-8">
                 <TechniciansView lang={lang} t={t} technicians={technicians} onRefresh={loadData} />
-                <InventoryView lang={lang} t={t} products={products} isAdmin={isAdmin} onRefresh={loadData} />
+                <InventoryView lang={lang} t={t} products={products} orders={visibleOrders} technicians={technicians} isAdmin={isAdmin} onRefresh={loadData} />
               </div>
             )}
             {tab === "customers" && isAdmin && (

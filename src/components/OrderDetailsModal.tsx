@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X, Check, MapPin, Upload, ImageIcon, Crosshair, XCircle, Package } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { checklistItems, warrantyOptions } from "../locales";
@@ -42,6 +42,19 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
   const [successToast, setSuccessToast] = useState(false);
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [amountTouched, setAmountTouched] = useState(false);
+
+  const autoTotal = useMemo(() => {
+    return products
+      .filter(p => productIds.includes(p.id))
+      .reduce((sum, p) => sum + p.price, 0);
+  }, [products, productIds]);
+
+  useEffect(() => {
+    if (!amountTouched && autoTotal > 0) {
+      setAmount(autoTotal.toFixed(3));
+    }
+  }, [autoTotal, amountTouched]);
 
   useEffect(() => {
     if (isCreate && navigator.geolocation) {
@@ -325,10 +338,13 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
                       inputMode="decimal"
                       step="0.001"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
                       className={inputCls}
                       dir="ltr"
                     />
+                    {autoTotal > 0 && !amountTouched && (
+                      <p className="mt-1 text-xs text-emerald-600">{t.consumptionAutoPriced}: {autoTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">{t.warranty}</label>

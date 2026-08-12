@@ -214,6 +214,17 @@ export interface Strings {
   changesSaved: string;
   longPressEditHint: string;
   viewCustomersMap: string;
+  inventoryConsumptionReport: string;
+  consumptionReportTitle: string;
+  consumptionDate: string;
+  consumptionFullReport: string;
+  consumptionToday: string;
+  consumptionNoData: string;
+  consumptionTotalInstallations: string;
+  consumptionQuantity: string;
+  consumptionProduct: string;
+  consumptionTechnician: string;
+  consumptionAutoPriced: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -432,6 +443,17 @@ export const translations: Record<Lang, Strings> = {
     changesSaved: "تم حفظ التعديلات بنجاح",
     longPressEditHint: "اضغط مطولاً على أي أمر لتعديله",
     viewCustomersMap: "عرض العملاء على الخريطة",
+    inventoryConsumptionReport: "تقرير استهلاك المخزون",
+    consumptionReportTitle: "تقرير استهلاك المخزون الميداني",
+    consumptionDate: "التاريخ",
+    consumptionFullReport: "تقرير شامل",
+    consumptionToday: "استهلاك اليوم",
+    consumptionNoData: "لا توجد تركيبات في التاريخ المحدد",
+    consumptionTotalInstallations: "إجمالي التركيبات",
+    consumptionQuantity: "الكمية",
+    consumptionProduct: "المنتج",
+    consumptionTechnician: "الفني",
+    consumptionAutoPriced: "تم حساب المبلغ تلقائياً",
   },
   en: {
     appTitle: "Smart Door Oman",
@@ -648,6 +670,17 @@ export const translations: Record<Lang, Strings> = {
     changesSaved: "Changes saved successfully",
     longPressEditHint: "Long-press any order to edit it",
     viewCustomersMap: "View Customers on Map",
+    inventoryConsumptionReport: "Inventory Consumption Report",
+    consumptionReportTitle: "Field Inventory Consumption Report",
+    consumptionDate: "Date",
+    consumptionFullReport: "Full Report",
+    consumptionToday: "Today's Consumption",
+    consumptionNoData: "No installations on the selected date",
+    consumptionTotalInstallations: "Total Installations",
+    consumptionQuantity: "Quantity",
+    consumptionProduct: "Product",
+    consumptionTechnician: "Technician",
+    consumptionAutoPriced: "Amount auto-calculated",
   },
 };
 

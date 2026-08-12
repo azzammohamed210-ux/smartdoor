@@ -1,25 +1,29 @@
 import { useState, useMemo } from "react";
-import { Search, Pencil, Plus, Folder } from "lucide-react";
+import { Search, Pencil, Plus, Folder, BarChart3 } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { categoryLabels } from "../locales";
-import type { Product } from "../types";
+import type { Product, WorkOrder, Technician } from "../types";
 import ProductEditModal from "./ProductEditModal";
+import ConsumptionReportModal from "./ConsumptionReportModal";
 
 interface Props {
   lang: Lang;
   t: Strings;
   products: Product[];
+  orders: WorkOrder[];
+  technicians: Technician[];
   isAdmin: boolean;
   onRefresh: () => void;
 }
 
 type CatFilter = "all" | "lock" | "door";
 
-export default function InventoryView({ lang, t, products, isAdmin, onRefresh }: Props) {
+export default function InventoryView({ lang, t, products, orders, technicians, isAdmin, onRefresh }: Props) {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<CatFilter>("all");
   const [editing, setEditing] = useState<Product | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showConsumption, setShowConsumption] = useState(false);
 
   const filtered = useMemo(() => {
     let r = products;
@@ -45,15 +49,24 @@ export default function InventoryView({ lang, t, products, isAdmin, onRefresh }:
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-800">{t.manageProducts}</h2>
-        {isAdmin && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:shadow-lg"
+            onClick={() => setShowConsumption(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:shadow-lg"
           >
-            <Plus className="h-4 w-4" />
-            {t.addProduct}
+            <BarChart3 className="h-4 w-4" />
+            {t.inventoryConsumptionReport}
           </button>
-        )}
+          {isAdmin && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:shadow-lg"
+            >
+              <Plus className="h-4 w-4" />
+              {t.addProduct}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="relative">
@@ -140,6 +153,17 @@ export default function InventoryView({ lang, t, products, isAdmin, onRefresh }:
           product={editing}
           onClose={() => { setEditing(null); setShowAdd(false); }}
           onRefresh={onRefresh}
+        />
+      )}
+
+      {showConsumption && (
+        <ConsumptionReportModal
+          lang={lang}
+          t={t}
+          orders={orders}
+          technicians={technicians}
+          products={products}
+          onClose={() => setShowConsumption(false)}
         />
       )}
     </div>

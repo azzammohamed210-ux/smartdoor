@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, Save, Check } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { checklistItems, warrantyOptions } from "../locales";
@@ -38,6 +38,19 @@ export default function ManagerEditModal({ lang, t, order, technicians, products
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
+
+  const autoTotal = useMemo(() => {
+    return products
+      .filter(p => productIds.includes(p.id))
+      .reduce((sum, p) => sum + p.price, 0);
+  }, [products, productIds]);
+
+  useEffect(() => {
+    if (!amountTouched && autoTotal > 0) {
+      setAmount(autoTotal.toFixed(3));
+    }
+  }, [autoTotal, amountTouched]);
 
   const toggleProduct = (id: string) => {
     setProductIds((prev) => (prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]));
@@ -208,7 +221,10 @@ export default function ManagerEditModal({ lang, t, order, technicians, products
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">{t.amountOmr}</label>
-              <input type="number" inputMode="decimal" step="0.001" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} dir="ltr" />
+              <input type="number" inputMode="decimal" step="0.001" value={amount} onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }} className={inputCls} dir="ltr" />
+              {autoTotal > 0 && !amountTouched && (
+                <p className="mt-1 text-xs text-emerald-600">{t.consumptionAutoPriced}: {autoTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">{t.warranty}</label>
