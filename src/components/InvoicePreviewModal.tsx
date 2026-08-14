@@ -4,6 +4,7 @@ import type { Lang, Strings } from "../locales";
 import { translations, categoryLabels, warrantyOptions } from "../locales";
 import type { WorkOrder, Product } from "../types";
 import { supabase } from "../lib/supabaseClient";
+import { sendWhatsAppDirect } from "../services/whatsapp";
 
 interface Props {
   lang: Lang;
@@ -199,32 +200,17 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
         setProgressMsg(t.sendingVideo(orderProducts.find(({ product }) => product.video_url)?.product.name_ar || ""));
       }
 
-      // Call the edge function
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-media`;
-      const resp = await fetch(fnUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
+      try {
+        await sendWhatsAppDirect({
           chatId,
           invoiceUrl,
           invoiceCaption,
           media: mediaItems,
-        }),
-      });
-
-      if (!resp.ok) {
-        const errBody = await resp.json().catch(() => null);
-        setSendError(getDisplayError(errBody, `Green API request failed: ${resp.status}`));
-        setSending(false);
-        return;
-      }
-
-      const respData = await resp.json();
-      if (respData?.error) {
-        setSendError(getDisplayError(respData, t.sendError));
+        });
+      } catch (error: any) {
+        const showText = error?.message || error?.toString() || t.sendError;
+        alert(showText);
+        setSendError(showText);
         setSending(false);
         return;
       }
