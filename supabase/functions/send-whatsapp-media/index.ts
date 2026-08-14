@@ -17,6 +17,22 @@ interface SendRequestBody {
   invoiceUrl?: string;
   invoiceCaption?: string;
   media?: MediaItem[];
+  message?: string;
+}
+
+function normalizeGreenApiUrl(rawUrl: string): string {
+  return (rawUrl || "https://7107.api.greenapi.com")
+    .replace(/[\[\]]/g, "")
+    .trim()
+    .replace(/\/+$/, "");
+}
+
+function normalizeGreenApiChatId(rawChatId: string): string {
+  const value = (rawChatId || "").trim();
+  if (!value) return "";
+
+  const withAt = value.includes("@") ? value : `${value.replace(/\+/g, "").replace(/\D/g, "")}@c.us`;
+  return withAt.replace(/[\[\]\\]/g, "").trim();
 }
 
 function delay(ms: number): Promise<void> {
@@ -43,13 +59,32 @@ async function sendFileByUrl(
   return { ok: resp.ok, status: resp.status, body: text };
 }
 
+async function sendTextMessage(
+  idInstance: string,
+  apiTokenInstance: string,
+  apiUrl: string,
+  chatId: string,
+  message: string,
+): Promise<{ ok: boolean; status: number; body: string }> {
+  const endpoint = `${apiUrl}/waInstance${idInstance}/sendMessage/${apiTokenInstance}`;
+  const body = JSON.stringify({ chatId, message });
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  const text = await resp.text();
+  return { ok: resp.ok, status: resp.status, body: text };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { chatId, invoiceUrl, invoiceCaption, media } = await req.json() as SendRequestBody;
+    const body = await req.json() as SendRequestBody;
+    const { chatId, invoiceUrl, invoiceCaption, media, message } = body;
 
     if (!chatId) {
       return new Response(JSON.stringify({ error: "Missing chatId" }), {
@@ -60,7 +95,7 @@ Deno.serve(async (req: Request) => {
 
     const idInstance = Deno.env.get("GREEN_API_ID_INSTANCE");
     const apiTokenInstance = Deno.env.get("GREEN_API_TOKEN_INSTANCE");
-    const apiUrl = Deno.env.get("GREEN_API_URL") || "https://7107.api.greenapi.com";
+    const apiUrl = normalizeGreenApiUrl(Deno.env.get("GREEN_API_URL") || "https://7107.api.greenapi.com");
 
     if (!idInstance || !apiTokenInstance) {
       return new Response(JSON.stringify({ error: "Green API credentials not configured" }), {
@@ -69,7 +104,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const normalizedChatId = normalizeGreenApiChatId(chatId);
+    if (!normalizedChatId) {
+      return new Response(JSON.stringify({ error: "Invalid chatId format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const results: { step: string; ok: boolean; detail: string }[] = [];
+
+    if (message) {
+      const textResult = await sendTextMessage(idInstance, apiTokenInstance, apiUrl, normalizedChatId, message);
+      results.push({ step: "message", ok: textResult.ok, detail: textResult.body });
+      if (!textResult.ok) {
+        return new Response(JSON.stringify({ error: "Failed to send message", results }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Step 1: Send invoice PDF
     if (invoiceUrl) {
@@ -77,7 +131,7 @@ Deno.serve(async (req: Request) => {
         idInstance,
         apiTokenInstance,
         apiUrl,
-        chatId,
+        normalizedChatId,
         invoiceUrl,
         "Invoice.pdf",
         invoiceCaption || "",
@@ -100,7 +154,7 @@ Deno.serve(async (req: Request) => {
           idInstance,
           apiTokenInstance,
           apiUrl,
-          chatId,
+          normalizedChatId,
           item.url,
           item.fileName,
           item.caption,
@@ -118,8 +172,8 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err?.message || "Unknown Green API error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
