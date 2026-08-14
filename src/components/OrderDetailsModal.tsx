@@ -92,32 +92,33 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
       const dataUrl = await readFileAsDataUrl(file);
       setIdImage(dataUrl);
       const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("eng+ara", 1, {
+      const worker = await createWorker("ara", 1, {
         logger: () => {},
       });
       const { data: { text } } = await worker.recognize(dataUrl);
       await worker.terminate();
-      // Extract name: look for lines with Arabic or English name patterns
-      const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 2);
-      // Try to find a name-like line (Arabic name or English name)
+      const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
       let extractedName = "";
-      // Look for "Name" label in English or Arabic
-      const nameIdx = lines.findIndex(l => /name|اسم|الاسم/i.test(l));
-      if (nameIdx >= 0 && nameIdx + 1 < lines.length) {
-        extractedName = lines[nameIdx + 1];
-      } else {
-        // Try to find the longest Arabic text line as a fallback
+      // Look for a line containing "الإسم" or "الاسم", then take the text on the same line (after the label) or the next line
+      const nameIdx = lines.findIndex(l => /الإسم|الاسم/.test(l));
+      if (nameIdx >= 0) {
+        const labelLine = lines[nameIdx];
+        const afterLabel = labelLine.split(/الإسم|الاسم/).pop()?.trim() || "";
+        if (afterLabel && /[\u0600-\u06FF]/.test(afterLabel)) {
+          extractedName = afterLabel;
+        } else if (nameIdx + 1 < lines.length) {
+          extractedName = lines[nameIdx + 1];
+        }
+      }
+      // Fallback: longest Arabic-only line
+      if (!extractedName) {
         const arabicLines = lines.filter(l => /[\u0600-\u06FF]{3,}/.test(l));
         if (arabicLines.length > 0) {
           extractedName = arabicLines.sort((a, b) => b.length - a.length)[0];
-        } else {
-          // Fallback: first non-numeric line
-          const nonNumeric = lines.find(l => !/^\d+$/.test(l.replace(/[\s\-:]/g, "")));
-          extractedName = nonNumeric || "";
         }
       }
-      // Clean up extracted name
-      extractedName = extractedName.replace(/[^\u0600-\u06FFa-zA-Z\s]/g, "").trim();
+      // Keep only Arabic letters and spaces, strip digits/symbols/Latin
+      extractedName = extractedName.replace(/[^\u0600-\u06FF\s]/g, "").trim();
       setOcrResult(extractedName || "");
       setOcrEdited(extractedName || "");
     } catch (err) {
@@ -342,8 +343,14 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
                     <ImageIcon className="h-4 w-4" />
                     {t.uploadIdImage}
                   </label>
-                  <input type="file" accept="image/*" onChange={handleIdUpload} className="w-full text-xs text-slate-500" />
-                  {idImage && (
+                  <input ref={ocrFileRef} type="file" accept="image/*" onChange={handleOcrScan} className="w-full text-xs text-slate-500" />
+                  {ocrScanning && (
+                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t.ocrScanning}
+                    </div>
+                  )}
+                  {idImage && !ocrScanning && (
                     <div className="mt-3 flex items-center gap-3">
                       <img src={idImage} alt="ID" className="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -353,6 +360,55 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
                     </div>
                   )}
                 </div>
+
+                {/* OCR confirmation modal */}
+                {ocrResult !== null && (
+                  <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/50 p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+                      <div className="mb-4 flex items-center gap-2">
+                        <ScanLine className="h-5 w-5 text-blue-600" />
+                        <h4 className="text-base font-bold text-slate-900">{t.ocrConfirmTitle}</h4>
+                      </div>
+                      {ocrResult ? (
+                        <>
+                          <label className="mb-1 block text-xs font-medium text-slate-500">{t.ocrConfirmName}</label>
+                          <input
+                            value={ocrEdited}
+                            onChange={(e) => setOcrEdited(e.target.value)}
+                            className={inputCls}
+                            autoFocus
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">{t.ocrNoName}</p>
+                          <input
+                            value={ocrEdited}
+                            onChange={(e) => setOcrEdited(e.target.value)}
+                            className={inputCls}
+                            placeholder={t.clientName}
+                            autoFocus
+                          />
+                        </>
+                      )}
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => { setOcrResult(null); setOcrEdited(""); }}
+                          className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                        >
+                          {t.ocrRetake}
+                        </button>
+                        <button
+                          onClick={confirmOcrName}
+                          disabled={!ocrEdited.trim()}
+                          className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {t.ocrConfirm}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Product - multi-select checkboxes */}
                 <div>

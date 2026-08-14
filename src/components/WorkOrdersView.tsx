@@ -215,7 +215,9 @@ export default function WorkOrdersView({ lang, t, orders, technicians, products,
                     )}
                     <button
                       onClick={() => {
-                        if (o.gps_link) {
+                        if (o.gps_lat != null && o.gps_lng != null) {
+                          window.open(`https://www.google.com/maps/search/?api=1&query=${o.gps_lat},${o.gps_lng}`, "_blank", "noreferrer");
+                        } else if (o.gps_link) {
                           window.open(o.gps_link, "_blank", "noreferrer");
                         } else {
                           showToast(t.noLocationLink);

@@ -277,7 +277,9 @@ export default function MapView({ lang, t, orders, technician, technicians, isAd
               </div>
             </div>
             <a
-              href={selectedOrder.gps_link || `https://www.google.com/maps/dir/?api=1&destination=${selectedOrder.gps_lat},${selectedOrder.gps_lng}`}
+              href={selectedOrder.gps_lat != null && selectedOrder.gps_lng != null
+                ? `https://www.google.com/maps/search/?api=1&query=${selectedOrder.gps_lat},${selectedOrder.gps_lng}`
+                : selectedOrder.gps_link || "#"}
               target="_blank"
               rel="noreferrer"
               className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"

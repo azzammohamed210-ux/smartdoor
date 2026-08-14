@@ -24,12 +24,42 @@ export function useToast() {
 
 let toastId = 0;
 
+const NOTIFICATION_TITLES: Record<ToastType, { ar: string; en: string }> = {
+  success: { ar: "نجاح", en: "Success" },
+  error: { ar: "تنبيه", en: "Alert" },
+  info: { ar: "إشعار", en: "Notice" },
+};
+
+function fireSystemNotification(message: string, type: ToastType) {
+  if (typeof Notification === "undefined") return;
+  if (Notification.permission === "granted") {
+    const title = NOTIFICATION_TITLES[type];
+    try {
+      new Notification(title.en, {
+        body: message,
+        icon: "/pwa-192x192.png",
+        tag: "smart-door-oman",
+      });
+    } catch {
+      // ignore notification errors
+    }
+  }
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
 
   const showToast = useCallback((message: string, type: ToastType = "success", icon: "check" | "cancel" | "rocket" | "cash" = "check") => {
     const id = ++toastId;
     setToasts(prev => [...prev, { id, message, type, icon }]);
+    fireSystemNotification(message, type);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3500);

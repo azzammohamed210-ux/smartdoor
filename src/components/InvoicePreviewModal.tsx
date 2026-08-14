@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { X, Download, MessageCircle, Check } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { translations, categoryLabels, warrantyOptions } from "../locales";
@@ -19,7 +19,13 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
 
-  const product = products.find(p => p.id === order.product_id);
+  const orderProducts = useMemo(() => {
+    const ids = order.product_ids && order.product_ids.length > 0 ? order.product_ids : (order.product_id ? [order.product_id] : []);
+    return products
+      .filter(p => ids.includes(p.id))
+      .map(p => ({ product: p, qty: 1, lineTotal: p.price }));
+  }, [order.product_ids, order.product_id, products]);
+  const grandTotal = orderProducts.reduce((sum, p) => sum + p.lineTotal, 0);
   const dateStr = new Date().toLocaleString(lang === "ar" ? "ar-OM" : "en-GB");
   const warrantyLabel = warrantyOptions.find(w => w.value === String(order.warranty_months))?.[lang === "ar" ? "label_ar" : "label_en"] || (lang === "ar" ? "سنة" : "1 year");
 
@@ -159,14 +165,36 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
 
             <div className="border-t-2 border-slate-800 p-3">
               <h4 className="mb-2 text-sm font-bold text-slate-800">{t.product}</h4>
-              <div className="rounded-xl border border-slate-200 p-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{product?.name_ar || "-"}</p>
-                    <p className="text-xs text-slate-400">{product?.code} · {product ? categoryLabels[product.category]?.[lang] : ""}</p>
-                  </div>
-                  <p className="text-lg font-bold text-blue-600">{product?.price.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
-                </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
+                      <th className="px-2.5 py-2 text-right font-semibold">{t.invoiceProduct}</th>
+                      <th className="px-2 py-2 text-center font-semibold">{t.invoiceQty}</th>
+                      <th className="px-2 py-2 text-right font-semibold">{t.invoiceUnitPrice}</th>
+                      <th className="px-2.5 py-2 text-right font-semibold">{t.invoiceLineTotal}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orderProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-2.5 py-3 text-center text-slate-400">-</td>
+                      </tr>
+                    ) : (
+                      orderProducts.map(({ product, qty, lineTotal }) => (
+                        <tr key={product.id} className="border-b border-slate-100 last:border-0">
+                          <td className="px-2.5 py-2.5">
+                            <p className="font-semibold text-slate-900">{product.name_ar}</p>
+                            <p className="text-xs text-slate-400">{product.code} · {categoryLabels[product.category]?.[lang] || ""}</p>
+                          </td>
+                          <td className="px-2 py-2.5 text-center text-slate-700">{qty}</td>
+                          <td className="px-2 py-2.5 text-right text-slate-700">{product.price.toFixed(3)}</td>
+                          <td className="px-2.5 py-2.5 text-right font-bold text-blue-600">{lineTotal.toFixed(3)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -224,7 +252,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-[11px] text-blue-100">{t.totalRevenue}</p>
-                  <p className="text-lg font-bold leading-tight whitespace-nowrap">{order.amount.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+                  <p className="text-lg font-bold leading-tight whitespace-nowrap">{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
                 </div>
                 <div className="min-w-0 text-right">
                   <p className="text-[11px] text-blue-100">{t.warranty}</p>
