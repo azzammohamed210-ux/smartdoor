@@ -72,19 +72,22 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     return { file, fileName };
   };
 
-  const uploadInvoiceToStorage = async (file: File, fileName: string): Promise<string | null> => {
+  const uploadInvoiceToStorage = async (file: File, fileName: string): Promise<{ url: string | null; error: string | null }> => {
     try {
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("product-videos")
         .upload(`invoices/${fileName}`, file, { contentType: "application/pdf", upsert: true });
-      if (error) throw error;
+      if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage
         .from("product-videos")
         .getPublicUrl(`invoices/${fileName}`);
-      return urlData?.publicUrl || null;
-    } catch (e) {
-      console.error("Invoice upload error:", e);
-      return null;
+      const publicUrl = urlData?.publicUrl || null;
+      if (!publicUrl) throw new Error("Failed to get public URL after upload");
+      return { url: publicUrl, error: null };
+    } catch (e: any) {
+      const detail = e?.message || String(e) || "Unknown error";
+      console.error("Invoice upload error:", detail);
+      return { url: null, error: detail };
     }
   };
 
@@ -120,9 +123,9 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       }
 
       // Upload invoice PDF to Supabase Storage to get a public URL
-      const invoiceUrl = await uploadInvoiceToStorage(result.file, result.fileName);
+      const { url: invoiceUrl, error: invUploadErr } = await uploadInvoiceToStorage(result.file, result.fileName);
       if (!invoiceUrl) {
-        setSendError(t.sendError);
+        setSendError(`${t.sendError}${invUploadErr ? `: ${invUploadErr}` : ""}`);
         setSending(false);
         return;
       }

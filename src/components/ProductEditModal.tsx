@@ -36,11 +36,12 @@ export default function ProductEditModal({ lang, t, product, onClose, onRefresh 
     setVideoUploading(true);
     setError("");
     try {
-      const url = await uploadProductVideo(file);
+      const { url, error: uploadErr } = await uploadProductVideo(file);
       if (url) {
         setVideoUrl(url);
       } else {
-        setError(lang === "ar" ? "فشل رفع الفيديو" : "Video upload failed");
+        const reason = uploadErr || (lang === "ar" ? "فشل رفع الفيديو" : "Video upload failed");
+        setError(`${lang === "ar" ? "فشل رفع الفيديو" : "Video upload failed"}: ${reason}`);
       }
     } catch (e: any) {
       setError(e.message || "Error");

@@ -186,21 +186,24 @@ export async function updateProduct(id: string, patch: Partial<Product>): Promis
   if (idx >= 0) { prods[idx] = { ...prods[idx], ...patch }; lsSet(LS_PRODUCTS, prods); }
 }
 
-export async function uploadProductVideo(file: File): Promise<string | null> {
+export async function uploadProductVideo(file: File): Promise<{ url: string | null; error: string | null }> {
   try {
     const ext = file.name.split(".").pop() || "mp4";
     const fileName = `${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("product-videos")
       .upload(fileName, file, { contentType: file.type || "video/mp4", upsert: false });
-    if (error) throw error;
+    if (uploadError) throw uploadError;
     const { data: urlData } = supabase.storage
       .from("product-videos")
       .getPublicUrl(fileName);
-    return urlData?.publicUrl || null;
-  } catch (e) {
-    console.error("Video upload error:", e);
-    return null;
+    const publicUrl = urlData?.publicUrl || null;
+    if (!publicUrl) throw new Error("Failed to get public URL after upload");
+    return { url: publicUrl, error: null };
+  } catch (e: any) {
+    const detail = e?.message || String(e) || "Unknown error";
+    console.error("Video upload error:", detail);
+    return { url: null, error: detail };
   }
 }
 
