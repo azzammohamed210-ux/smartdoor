@@ -26,6 +26,7 @@ export interface Product {
   price: number;
   total_stock: number;
   reorder_level: number;
+  video_url?: string | null;
 }
 
 export type OrderStatus = "pending" | "in_progress" | "completed" | "cancelled";

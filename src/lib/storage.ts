@@ -155,12 +155,13 @@ export async function fetchProducts(): Promise<Product[]> {
   return lsGet<Product[]>(LS_PRODUCTS, []);
 }
 
-export async function addProduct(input: { code: string; name_ar: string; category: string; price: number; total_stock: number; reorder_level: number }): Promise<Product> {
+export async function addProduct(input: { code: string; name_ar: string; category: string; price: number; total_stock: number; reorder_level: number; video_url?: string | null }): Promise<Product> {
   const prod: Product = { id: crypto.randomUUID(), ...input };
   try {
     const { data, error } = await supabase.from("products").insert({
       code: input.code, name_ar: input.name_ar, category: input.category,
       price: input.price, total_stock: input.total_stock, reorder_level: input.reorder_level,
+      video_url: input.video_url || null,
     }).select("*").single();
     if (!error && data) return data as Product;
   } catch { /* fall through */ }
@@ -172,15 +173,35 @@ export async function addProduct(input: { code: string; name_ar: string; categor
 
 export async function updateProduct(id: string, patch: Partial<Product>): Promise<void> {
   try {
-    const { error } = await supabase.from("products").update({
+    const updateData: Record<string, unknown> = {
       code: patch.code, name_ar: patch.name_ar, category: patch.category,
       price: patch.price, total_stock: patch.total_stock, reorder_level: patch.reorder_level,
-    }).eq("id", id);
+    };
+    if (patch.video_url !== undefined) updateData.video_url = patch.video_url || null;
+    const { error } = await supabase.from("products").update(updateData).eq("id", id);
     if (!error) return;
   } catch { /* fall through */ }
   const prods = lsGet<Product[]>(LS_PRODUCTS, []);
   const idx = prods.findIndex(p => p.id === id);
   if (idx >= 0) { prods[idx] = { ...prods[idx], ...patch }; lsSet(LS_PRODUCTS, prods); }
+}
+
+export async function uploadProductVideo(file: File): Promise<string | null> {
+  try {
+    const ext = file.name.split(".").pop() || "mp4";
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("product-videos")
+      .upload(fileName, file, { contentType: file.type || "video/mp4", upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage
+      .from("product-videos")
+      .getPublicUrl(fileName);
+    return urlData?.publicUrl || null;
+  } catch (e) {
+    console.error("Video upload error:", e);
+    return null;
+  }
 }
 
 export async function deleteProduct(id: string): Promise<void> {

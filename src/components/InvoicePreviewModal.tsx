@@ -1,9 +1,9 @@
 import { useRef, useState, useMemo } from "react";
-import { X, Download, MessageCircle, Check } from "lucide-react";
+import { X, Download, MessageCircle, Check, Loader2, Send } from "lucide-react";
 import type { Lang, Strings } from "../locales";
 import { translations, categoryLabels, warrantyOptions } from "../locales";
 import type { WorkOrder, Product } from "../types";
-import { buildWhatsappUrl } from "../lib/invoice";
+import { supabase } from "../lib/supabaseClient";
 
 interface Props {
   lang: Lang;
@@ -18,6 +18,9 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [progressMsg, setProgressMsg] = useState("");
+  const [sendError, setSendError] = useState("");
 
   const orderProducts = useMemo(() => {
     const ids = order.product_ids && order.product_ids.length > 0 ? order.product_ids : (order.product_id ? [order.product_id] : []);
@@ -63,10 +66,26 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     const offsetY = (pageH - finalH) / 2;
     pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
     const safeName = (order.client_name || "client").replace(/[\\/:*?"<>|]/g, "_");
-    const fileName = `الفاتورة_${safeName}_${order.client_phone}.pdf`;
+    const fileName = `Invoice_${safeName}_${order.client_phone}.pdf`;
     const blob = pdf.output("blob");
     const file = new File([blob], fileName, { type: "application/pdf" });
     return { file, fileName };
+  };
+
+  const uploadInvoiceToStorage = async (file: File, fileName: string): Promise<string | null> => {
+    try {
+      const { error } = await supabase.storage
+        .from("product-videos")
+        .upload(`invoices/${fileName}`, file, { contentType: "application/pdf", upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage
+        .from("product-videos")
+        .getPublicUrl(`invoices/${fileName}`);
+      return urlData?.publicUrl || null;
+    } catch (e) {
+      console.error("Invoice upload error:", e);
+      return null;
+    }
   };
 
   const handleExport = async () => {
@@ -89,24 +108,96 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   };
 
   const handleSend = async () => {
-    setExporting(true);
+    setSending(true);
+    setSendError("");
+    setProgressMsg(t.sendingInvoice);
     try {
       const result = await generatePdf();
-      if (!result) return;
-      const url = URL.createObjectURL(result.file);
+      if (!result) {
+        setSendError(t.sendError);
+        setSending(false);
+        return;
+      }
+
+      // Upload invoice PDF to Supabase Storage to get a public URL
+      const invoiceUrl = await uploadInvoiceToStorage(result.file, result.fileName);
+      if (!invoiceUrl) {
+        setSendError(t.sendError);
+        setSending(false);
+        return;
+      }
+
+      // Build the list of product videos to send
+      const mediaItems = orderProducts
+        .filter(({ product }) => product.video_url)
+        .map(({ product }) => ({
+          url: product.video_url!,
+          fileName: `Video_${product.name_ar}.mp4`,
+          caption: lang === "ar"
+            ? `🎬 فيديو شرح وطريقة استخدام: ${product.name_ar}`
+            : `🎬 Product guide video: ${product.name_ar}`,
+        }));
+
+      // Build the invoice caption
+      const invoiceCaption = translations[lang].whatsappMessage(order);
+
+      // Format chatId for Green API
+      const cleanPhone = order.client_phone.replace(/[^\d]/g, "");
+      const chatId = `${cleanPhone}@c.us`;
+
+      // Update progress message for first video if any
+      if (mediaItems.length > 0) {
+        setProgressMsg(t.sendingVideo(orderProducts.find(({ product }) => product.video_url)?.product.name_ar || ""));
+      }
+
+      // Call the edge function
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp-media`;
+      const resp = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          chatId,
+          invoiceUrl,
+          invoiceCaption,
+          media: mediaItems,
+        }),
+      });
+
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        setSendError(errBody?.error || t.sendError);
+        setSending(false);
+        return;
+      }
+
+      const respData = await resp.json();
+      if (respData.error) {
+        setSendError(respData.error);
+        setSending(false);
+        return;
+      }
+
+      // Also download the invoice locally for the user's records
+      const dlUrl = URL.createObjectURL(result.file);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = dlUrl;
       a.download = result.fileName;
       a.click();
-      URL.revokeObjectURL(url);
-      const msg = translations[lang].whatsappMessage(order);
-      const waUrl = buildWhatsappUrl(order.client_phone, msg);
-      window.open(waUrl, "_blank");
+      URL.revokeObjectURL(dlUrl);
+
+      setProgressMsg(t.allSentSuccess);
       setExported(true);
-    } catch (e) {
+      setTimeout(() => {
+        setSending(false);
+        setProgressMsg("");
+      }, 2000);
+    } catch (e: any) {
       console.error("Send error", e);
-    } finally {
-      setExporting(false);
+      setSendError(t.sendError);
+      setSending(false);
     }
   };
 
@@ -269,13 +360,36 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
           </div>
         </div>
 
+        {/* Progress bar / status */}
+        {sending && progressMsg && (
+          <div className="border-t border-blue-200 bg-blue-50 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-blue-700">{progressMsg}</span>
+            </div>
+          </div>
+        )}
+        {!sending && exported && (
+          <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span>
+            </div>
+          </div>
+        )}
+        {sendError && (
+          <div className="border-t border-red-200 bg-red-50 px-5 py-3">
+            <span className="text-sm font-medium text-red-600">{sendError}</span>
+          </div>
+        )}
+
         <div className="flex gap-3 border-t border-slate-200 bg-white p-4">
           <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50">
             {t.cancel}
           </button>
           <button
             onClick={handleExport}
-            disabled={exporting}
+            disabled={exporting || sending}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
             title={t.downloadInvoice}
           >
@@ -284,19 +398,22 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
           </button>
           <button
             onClick={handleSend}
-            disabled={exporting}
+            disabled={exporting || sending}
             className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
           >
-            {exporting ? (
-              <>...</>
+            {sending ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm">{progressMsg || "..."}</span>
+              </>
             ) : exported ? (
               <>
                 <Check className="h-5 w-5" />
-                {t.sendToCustomer}
+                {t.allSentSuccess}
               </>
             ) : (
               <>
-                <MessageCircle className="h-5 w-5" />
+                <Send className="h-5 w-5" />
                 {t.sendToCustomer}
               </>
             )}

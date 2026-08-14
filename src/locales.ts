@@ -249,6 +249,12 @@ export interface Strings {
   toastOrderCancelled: string;
   toastOrderCompleted: string;
   toastCashCollected: string;
+  uploadProductVideo: string;
+  videoAttached: string;
+  sendingInvoice: string;
+  sendingVideo: (name: string) => string;
+  allSentSuccess: string;
+  sendError: string;
 }
 
 export const translations: Record<Lang, Strings> = {
@@ -502,6 +508,12 @@ export const translations: Record<Lang, Strings> = {
     toastOrderCancelled: "تم إلغاء أمر العمل ❌",
     toastOrderCompleted: "تم إكمال أمر العمل بنجاح وتسجيل الاستهلاك 🚀",
     toastCashCollected: "تم تأكيد تحصيل المبلغ النقدي للفني {name} بنجاح 💰",
+    uploadProductVideo: "رفع فيديو شرح المنتج (MP4)",
+    videoAttached: "تم إرفاق فيديو المنتج",
+    sendingInvoice: "جاري إرسال الفاتورة...",
+    sendingVideo: (name: string) => `جاري إرسال فيديو شرح ${name}...`,
+    allSentSuccess: "تم إرسال كافة المرفقات بنجاح! 🎉",
+    sendError: "حدث خطأ أثناء الإرسال",
   },
   en: {
     appTitle: "MZ SMART",
@@ -753,6 +765,12 @@ export const translations: Record<Lang, Strings> = {
     toastOrderCancelled: "Work order cancelled ❌",
     toastOrderCompleted: "Work order completed and consumption recorded 🚀",
     toastCashCollected: "Cash collection confirmed for {name} 💰",
+    uploadProductVideo: "Upload Product Video (MP4)",
+    videoAttached: "Product video attached",
+    sendingInvoice: "Sending invoice...",
+    sendingVideo: (name: string) => `Sending video for ${name}...`,
+    allSentSuccess: "All attachments sent successfully! 🎉",
+    sendError: "Error sending attachments",
   },
 };
 
