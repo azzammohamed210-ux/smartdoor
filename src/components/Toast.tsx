@@ -37,8 +37,8 @@ function fireSystemNotification(message: string, type: ToastType) {
     try {
       new Notification(title.en, {
         body: message,
-        icon: "/pwa-192x192.png",
-        tag: "smart-door-oman",
+        icon: "/logo.png.png",
+        tag: "mz-smart",
       });
     } catch {
       // ignore notification errors

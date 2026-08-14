@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SYSTEM_PROMPT = `You are an AI assistant for "Smart Door Oman". Parse the user's Omani customer message and extract the following structured JSON fields strictly:
+const SYSTEM_PROMPT = `You are an AI assistant for "MZ". Parse the user's Omani customer message and extract the following structured JSON fields strictly:
 - phone: (string, extract Omani phone number, format as 8 digits without country code, e.g. "91234567")
 - location_url: (string, extract map URL/link if available, else null)
 - product: (string, identify product like 'قفل ذكي', 'ماكينة سلايد', 'ماكينة سوينج', 'باب', 'سلايد', else null)

@@ -253,7 +253,7 @@ export interface Strings {
 
 export const translations: Record<Lang, Strings> = {
   ar: {
-    appTitle: "سمارت دور عمان",
+    appTitle: "MZ SMART",
     appSubtitle: "أنظمة الأبواب الأوتوماتيكية والأقفال الذكية",
     dashboard: "لوحة التحكم",
     workOrders: "أوامر العمل",
@@ -504,7 +504,7 @@ export const translations: Record<Lang, Strings> = {
     toastCashCollected: "تم تأكيد تحصيل المبلغ النقدي للفني {name} بنجاح 💰",
   },
   en: {
-    appTitle: "Smart Door Oman",
+    appTitle: "MZ SMART",
     appSubtitle: "Automatic Doors & Smart Lock Systems",
     dashboard: "Dashboard",
     workOrders: "Work Orders",

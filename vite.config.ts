@@ -7,10 +7,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['logo.png.png'],
       manifest: {
-        name: 'Smart Door Oman',
-        short_name: 'SmartDoor',
+        name: 'MZ SMART',
+        short_name: 'MZ SMART',
         description: 'أنظمة الأبواب الأوتوماتيكية والأقفال الذكية',
         theme_color: '#0b1b2b',
         background_color: '#ffffff',
@@ -22,23 +22,17 @@ export default defineConfig({
         dir: 'rtl',
         icons: [
           {
-            src: 'favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any',
-          },
-          {
-            src: 'pwa-192x192.png',
+            src: 'logo.png.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'logo.png.png',
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'logo.png.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

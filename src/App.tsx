@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { LogOut, DoorOpen } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { supabase } from "./lib/supabaseClient";
 import { translations, type Lang } from "./locales";
 import { getCurrentUser, logout, fetchTechnicians, fetchProducts, fetchWorkOrders, isTechnicianActive, type MockUser } from "./lib/storage";
@@ -85,7 +85,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("smartdoor-realtime")
+      .channel("mz-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "technicians" }, () => fetchTechnicians().then(setTechnicians))
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => fetchProducts().then(setProducts))
       .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, () => fetchWorkOrders().then(setOrders))
@@ -141,8 +141,8 @@ export default function App() {
         <div className="mx-auto max-w-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
-                <DoorOpen className="h-6 w-6" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur overflow-hidden">
+                <img src="/logo.png.png" alt="MZ SMART" className="h-full w-full object-cover" />
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-tight">{t.appTitle}</h1>

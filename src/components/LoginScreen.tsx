@@ -1,4 +1,4 @@
-import { Lock, User as UserIcon, DoorOpen } from "lucide-react";
+import { Lock, User as UserIcon } from "lucide-react";
 import { useState } from "react";
 import type { Lang, Strings } from "../locales";
 import { login, type MockUser } from "../lib/storage";
@@ -35,8 +35,8 @@ export default function LoginScreen({ lang, t, deactivated, onLogin }: Props) {
     <div dir={lang === "ar" ? "rtl" : "ltr"} className="flex min-h-screen items-center justify-center px-4" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-            <DoorOpen className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur overflow-hidden">
+            <img src="/logo.png.png" alt="MZ SMART" className="h-full w-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold text-white">{t.appTitle}</h1>
           <p className="mt-2 text-sm text-blue-100">{t.appSubtitle}</p>
