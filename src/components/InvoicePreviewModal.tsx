@@ -91,6 +91,52 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     }
   };
 
+  const normalizePhoneForGreenApi = (phone: string): string => {
+    return (phone || "").replace(/[\s+]/g, "").replace(/[^\d]/g, "");
+  };
+
+  const getDisplayError = (value: unknown, fallback: string): string => {
+    if (!value) return fallback;
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed || fallback;
+    }
+
+    if (value instanceof Error) {
+      return value.message || fallback;
+    }
+
+    if (typeof value === "object") {
+      const record = value as Record<string, unknown>;
+
+      const direct = record.error ?? record.message ?? record.details ?? record.detail;
+      if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+      const nestedResults = Array.isArray(record.results)
+        ? record.results
+            .map((item) => {
+              if (!item || typeof item !== "object") return "";
+              const itemRecord = item as Record<string, unknown>;
+              const detail = itemRecord.detail ?? itemRecord.message ?? itemRecord.error;
+              return typeof detail === "string" && detail.trim() ? detail.trim() : "";
+            })
+            .filter(Boolean)
+        : [];
+
+      if (nestedResults.length) return nestedResults.join(" | ");
+
+      try {
+        const jsonText = JSON.stringify(value);
+        return jsonText && jsonText !== "{}" ? jsonText : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    return String(value) || fallback;
+  };
+
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -125,7 +171,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       // Upload invoice PDF to Supabase Storage to get a public URL
       const { url: invoiceUrl, error: invUploadErr } = await uploadInvoiceToStorage(result.file, result.fileName);
       if (!invoiceUrl) {
-        setSendError(`${t.sendError}${invUploadErr ? `: ${invUploadErr}` : ""}`);
+        setSendError(getDisplayError(invUploadErr, t.sendError));
         setSending(false);
         return;
       }
@@ -144,8 +190,8 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       // Build the invoice caption
       const invoiceCaption = translations[lang].whatsappMessage(order);
 
-      // Format chatId for Green API
-      const cleanPhone = order.client_phone.replace(/[^\d]/g, "");
+      // Format chatId for Green API without '+' or spaces
+      const cleanPhone = normalizePhoneForGreenApi(order.client_phone);
       const chatId = `${cleanPhone}@c.us`;
 
       // Update progress message for first video if any
@@ -170,15 +216,15 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       });
 
       if (!resp.ok) {
-        const errBody = await resp.json().catch(() => ({}));
-        setSendError(errBody?.error || t.sendError);
+        const errBody = await resp.json().catch(() => null);
+        setSendError(getDisplayError(errBody, `Green API request failed: ${resp.status}`));
         setSending(false);
         return;
       }
 
       const respData = await resp.json();
-      if (respData.error) {
-        setSendError(respData.error);
+      if (respData?.error) {
+        setSendError(getDisplayError(respData, t.sendError));
         setSending(false);
         return;
       }
@@ -199,7 +245,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       }, 2000);
     } catch (e: any) {
       console.error("Send error", e);
-      setSendError(t.sendError);
+      setSendError(getDisplayError(e, t.sendError));
       setSending(false);
     }
   };
