@@ -66,9 +66,9 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
     total: lineTotal.toFixed(3),
   }));
   const subtotal = grandTotal.toFixed(3);
-  const itemCountLabel = lang === "ar" ? "بنود" : "items";
   const companyName = lang === "ar" ? "محمد الزغل الرائدة ش م م" : t.appTitle;
-  const companySubtitle = lang === "ar" ? "Projects Mohammad Alzaghal Investment" : t.appSubtitle;
+  const companySubtitle = "Projects Mohammad Alzaghal Investment";
+  const paymentMethodLabel = order.payment_method === "bank" ? t.bankTransfer : t.cash;
 
   const generatePdf = async (): Promise<{ file: File; fileName: string } | null> => {
     if (!invoiceRef.current) return null;
@@ -82,26 +82,18 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
       import("jspdf"),
     ]);
     const target = invoiceRef.current;
-    const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
-    if (attachments) attachments.style.display = "none";
-
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     const renderScale = (window.devicePixelRatio || 1) * 2;
 
-    let canvas: HTMLCanvasElement;
-    try {
-      canvas = await html2canvas(target, {
-        scale: renderScale,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        windowWidth: 794,
-        windowHeight: 1123,
-      });
-    } finally {
-      if (attachments) attachments.style.display = "";
-    }
+    const canvas = await html2canvas(target, {
+      scale: renderScale,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      windowWidth: 794,
+      windowHeight: 1123,
+    });
 
     const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -227,139 +219,121 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="w-full overflow-x-auto">
-            <div className="mx-auto w-fit">
-              <div
-                ref={invoiceRef}
-                dir="rtl"
-                className="relative flex min-w-[210mm] w-[210mm] min-h-[297mm] flex-col justify-between bg-white p-8 font-sans text-gray-800 shadow-md"
-                style={{ pageBreakInside: "avoid" }}
-              >
-                <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-blue-50 opacity-60 blur-2xl" />
-                <div className="absolute left-10 top-10 h-32 w-32 rounded-full bg-blue-50 opacity-60 blur-xl" />
-
-                <div className="relative z-10 flex flex-col justify-between flex-1">
-                  <div>
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                      <div className="text-right text-xs leading-relaxed text-gray-700">
-                        <h2 className="mb-1 text-sm font-bold text-gray-900">{companyName}</h2>
-                        <p><span className="font-semibold">رقم السجل التجاري:</span> 1559756</p>
-                        <p><span className="font-semibold">رمز بريدي:</span> 110</p>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="text-4xl font-black italic tracking-widest text-[#0f2942]">M<span className="text-gray-500">Z</span></div>
-                        <p className="mt-1 text-[10px] font-bold tracking-tight text-gray-600">{companySubtitle}</p>
-                        <p className="text-[8px] uppercase tracking-widest text-gray-400">GATE AUTOMATION</p>
-                      </div>
-
-                      <div className="text-left">
-                        <span className="mb-2 inline-block rounded-sm bg-[#0f2942] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">INVOICE</span>
-                        <h3 className="text-lg font-bold text-gray-900">فاتورة / أمر عمل</h3>
-                        <p className="text-xs font-semibold text-blue-600">{order.order_number || "WO-202608-7666"}</p>
-                        <p className="mt-1 text-[10px] text-gray-500">التاريخ: {dateValue} - الوقت: {timeValue}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
-                        <div className="mb-2 flex items-center gap-2">
-                          <span className="inline-block h-3 w-1 bg-blue-500" />
-                          <h4 className="text-xs font-bold text-gray-500">بيانات العميل</h4>
-                        </div>
-                        <p className="text-base font-bold text-gray-900">{order.client_name || "-"}</p>
-                        <p className="mt-1 text-xs text-gray-600" dir="ltr">{order.client_phone || "-"}</p>
-                      </div>
-                      <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
-                        <div className="mb-2 flex items-center gap-2">
-                          <span className="inline-block h-3 w-1 bg-blue-500" />
-                          <h4 className="text-xs font-bold text-gray-500">ملخص العملية</h4>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <div>
-                            <p className="text-[10px] text-gray-400">فترة الضمان</p>
-                            <p className="font-bold text-gray-800">{warrantyLabel}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-400">طريقة الدفع</p>
-                            <p className="font-bold text-gray-800">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mb-6">
-                      <div className="mb-2 flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-gray-700">تفاصيل المنتجات والخدمات</h4>
-                        <span className="text-[10px] text-gray-400">{invoiceItems.length || 0} {itemCountLabel}</span>
-                      </div>
-                      <table className="w-full border-collapse text-right">
-                        <thead>
-                          <tr className="bg-[#0f2942] text-xs text-white">
-                            <th className="p-3 font-semibold">المنتج / الخدمة</th>
-                            <th className="p-3 text-center font-semibold">الكمية</th>
-                            <th className="p-3 text-left font-semibold">سعر الوحدة</th>
-                            <th className="p-3 text-left font-semibold">الإجمالي</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 border-b border-gray-100 text-xs">
-                          {invoiceItems.length > 0 ? invoiceItems.map((item, index) => (
-                            <tr key={`${item.code}-${index}`} className="hover:bg-gray-50/50">
-                              <td className="p-3">
-                                <p className="font-bold text-gray-900">{item.name}</p>
-                                <p className="text-[10px] text-gray-400">{item.code}</p>
-                              </td>
-                              <td className="p-3 text-center font-medium">{item.qty}</td>
-                              <td className="p-3 text-left font-medium">{item.unitPrice} {currency}</td>
-                              <td className="p-3 text-left font-bold text-gray-900">{item.total} {currency}</td>
-                            </tr>
-                          )) : (
-                            <tr><td colSpan={4} className="p-3 text-center text-gray-400">-</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="grid grid-cols-12 items-start gap-6">
-                      <div className="col-span-7 rounded border border-gray-100 bg-gray-50/50 p-4 text-[10px] leading-relaxed">
-                        <h5 className="mb-2 border-b border-gray-200 pb-1 text-xs font-bold text-gray-900">الضمان والشروط</h5>
-                        <ul className="list-inside list-disc space-y-1.5 text-gray-600">
-                          <li><strong className="text-gray-800">نطاق التغطية:</strong> يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.</li>
-                          <li><strong className="text-gray-800">العوامل الجوية:</strong> لا يشمل الضمان الأعطال أو الأضرار الناتجة عن سوء الأحوال والعوامل الجوية.</li>
-                          <li><strong className="text-gray-800">التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب أو ارتفاع وانخفاض التيار الكهربائي في الموقع.</li>
-                          <li><strong className="text-gray-800">الهدية المجانية:</strong> لا يشمل الضمان جهاز الاتصال كونه هدية مجانية.</li>
-                        </ul>
-                        <p className="mt-3 text-[9px] font-semibold text-gray-400">يرجى الاحتفاظ بهذه الفاتورة لإثبات الضمان والخدمة.</p>
-                      </div>
-
-                      <div className="col-span-5 space-y-2 text-xs">
-                        <h5 className="mb-2 border-b border-gray-200 pb-1 font-bold text-gray-900">ملخص المبلغ</h5>
-                        <div className="flex justify-between text-gray-600">
-                          <span>الإجمالي الفرعي:</span>
-                          <span>{subtotal} {currency}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-600">
-                          <span>الضريبة / الخصم:</span>
-                          <span>0.000 {currency}</span>
-                        </div>
-                        <div className="flex justify-between border-t border-gray-100 pt-1 text-sm font-bold text-gray-900">
-                          <span>الإجمالي:</span>
-                          <span>{subtotal} {currency}</span>
-                        </div>
-                        <div className="mt-4 rounded bg-[#0f2942] p-4 text-center text-white">
-                          <p className="mb-1 text-[10px] text-gray-300">المبلغ المدفوع إجمالاً</p>
-                          <p className="text-2xl font-black tracking-wide">{subtotal} {currency}</p>
-                          <p className="mt-1 text-[9px] text-gray-400">المتبقي: 0.000 {currency}</p>
-                        </div>
-                      </div>
-                    </div>
+          <div style={{ width: "100%", overflowX: "auto", background: "#f3f4f6", padding: "20px" }}>
+            <div
+              ref={invoiceRef}
+              id="invoice-sheet"
+              style={{
+                width: "210mm",
+                minWidth: "210mm",
+                minHeight: "297mm",
+                background: "#ffffff",
+                margin: "0 auto",
+                padding: "32px",
+                boxSizing: "border-box",
+                direction: "rtl",
+                fontFamily: "sans-serif",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                {/* HEADER */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #e5e7eb", paddingBottom: "16px", marginBottom: "20px" }}>
+                  <div style={{ textAlign: "right", fontSize: "12px", color: "#374151", lineHeight: "1.6" }}>
+                    <strong style={{ fontSize: "14px", color: "#111827" }}>{companyName}</strong><br />
+                    رقم السجل التجاري: 1559756<br />
+                    رمز بريدي: 110
                   </div>
-
-                  <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-4 text-[10px] text-gray-500">
-                    <p className="font-medium">شكراً لثقتكم بنا</p>
-                    <p className="font-semibold">MZ SMART - سلطنة عمان، محافظة جنوب الباطنة، الرميس</p>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "32px", fontWeight: "900", color: "#0f2942", fontStyle: "italic", letterSpacing: "2px" }}>
+                      M<span style={{ color: "#6b7280" }}>Z</span>
+                    </div>
+                    <div style={{ fontSize: "10px", fontWeight: "bold", color: "#4b5563" }}>{companySubtitle}</div>
+                    <div style={{ fontSize: "8px", color: "#9ca3af", letterSpacing: "2px" }}>GATE AUTOMATION</div>
+                  </div>
+                  <div style={{ textAlign: "left" }}>
+                    <span style={{ background: "#0f2942", color: "#ffffff", fontSize: "10px", fontWeight: "bold", padding: "4px 8px", borderRadius: "2px", display: "inline-block", marginBottom: "6px" }}>INVOICE</span>
+                    <div style={{ fontWeight: "bold", fontSize: "16px", color: "#111827" }}>فاتورة / أمر عمل</div>
+                    <div style={{ fontSize: "12px", color: "#2563eb", fontWeight: "bold" }}>{order.order_number || "WO-202608-7666"}</div>
+                    <div style={{ fontSize: "10px", color: "#6b7280", marginTop: "4px" }}>التاريخ: {dateValue} - الوقت: {timeValue}</div>
                   </div>
                 </div>
+
+                {/* CARDS */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+                  <div style={{ background: "#f9fafb", padding: "16px", borderRight: "4px solid #0f2942", borderRadius: "2px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "bold", color: "#2563eb", marginBottom: "4px" }}>| بيانات العميل</div>
+                    <div style={{ fontSize: "16px", fontWeight: "bold", color: "#111827" }}>{order.client_name || "-"}</div>
+                    <div style={{ fontSize: "12px", color: "#4b5563", marginTop: "4px" }} dir="ltr">{order.client_phone || "-"}</div>
+                  </div>
+                  <div style={{ background: "#f9fafb", padding: "16px", borderRight: "4px solid #0f2942", borderRadius: "2px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: "bold", color: "#2563eb", marginBottom: "4px" }}>| ملخص العملية</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginTop: "8px" }}>
+                      <div><span style={{ color: "#9ca3af", fontSize: "10px", display: "block" }}>فترة الضمان</span><strong>{warrantyLabel}</strong></div>
+                      <div><span style={{ color: "#9ca3af", fontSize: "10px", display: "block" }}>طريقة الدفع</span><strong>{paymentMethodLabel}</strong></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* TABLE */}
+                <div style={{ marginBottom: "24px" }}>
+                  <div style={{ fontSize: "12px", fontWeight: "bold", color: "#374151", marginBottom: "8px" }}>تفاصيل المنتجات والخدمات</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right" }}>
+                    <thead>
+                      <tr style={{ background: "#0f2942", color: "#ffffff", fontSize: "12px" }}>
+                        <th style={{ padding: "10px" }}>المنتج / الخدمة</th>
+                        <th style={{ padding: "10px", textAlign: "center" }}>الكمية</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>سعر الوحدة</th>
+                        <th style={{ padding: "10px", textAlign: "left" }}>الإجمالي</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontSize: "12px", color: "#374151" }}>
+                      {invoiceItems.length > 0 ? invoiceItems.map((item, index) => (
+                        <tr key={`${item.code}-${index}`} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                          <td style={{ padding: "10px" }}><strong>{item.name}</strong><br /><span style={{ fontSize: "10px", color: "#9ca3af" }}>{item.code}</span></td>
+                          <td style={{ padding: "10px", textAlign: "center" }}>{item.qty}</td>
+                          <td style={{ padding: "10px", textAlign: "left" }}>{item.unitPrice} {currency}</td>
+                          <td style={{ padding: "10px", textAlign: "left" }}><strong>{item.total} {currency}</strong></td>
+                        </tr>
+                      )) : (
+                        <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                          <td colSpan={4} style={{ padding: "10px", textAlign: "center", color: "#9ca3af" }}>-</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* BOTTOM */}
+                <div style={{ display: "grid", gridTemplateColumns: "7fr 5fr", gap: "16px", alignItems: "start" }}>
+                  <div style={{ background: "#f9fafb", padding: "12px", fontSize: "10px", color: "#4b5563", borderRadius: "2px", lineHeight: "1.6" }}>
+                    <strong style={{ fontSize: "11px", color: "#111827", display: "block", marginBottom: "6px" }}>الضمان والشروط</strong>
+                    <ul style={{ paddingRight: "14px", margin: 0 }}>
+                      <li><strong>نطاق التغطية:</strong> يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.</li>
+                      <li><strong>العوامل الجوية:</strong> لا يشمل الضمان الأعطال الناتجة عن سوء الأحوال الجوية.</li>
+                      <li><strong>التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب التيار الكهربائي.</li>
+                      <li><strong>الهدية المجانية:</strong> لا يشمل الضمان جهاز الاتصال كونه هدية مجانية.</li>
+                    </ul>
+                  </div>
+                  <div style={{ fontSize: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span>الإجمالي الفرعي:</span><span>{subtotal} {currency}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}><span>الضريبة / الخصم:</span><span>0.000 {currency}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", borderTop: "1px solid #e5e7eb", paddingTop: "4px", marginBottom: "12px" }}><span>الإجمالي:</span><span>{subtotal} {currency}</span></div>
+                    <div style={{ background: "#0f2942", color: "#ffffff", padding: "12px", textAlign: "center", borderRadius: "2px" }}>
+                      <div style={{ fontSize: "10px", color: "#d1d5db" }}>المبلغ المدفوع إجماللاً</div>
+                      <div style={{ fontSize: "20px", fontWeight: "bold", margin: "4px 0" }}>{subtotal} {currency}</div>
+                      <div style={{ fontSize: "9px", color: "#9ca3af" }}>المتبقي: 0.000 {currency}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* FOOTER */}
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "12px", marginTop: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px", color: "#6b7280" }}>
+                <span style={{ fontWeight: "500" }}>شكراً لثقتكم بنا</span>
+                <span style={{ fontWeight: "600" }}>MZ SMART - سلطنة عمان، محافظة جنوب الباطنة، الرميس</span>
               </div>
             </div>
           </div>
