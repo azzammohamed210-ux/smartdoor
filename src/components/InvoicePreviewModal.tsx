@@ -264,155 +264,106 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {/* Clean client invoice (used for PDF generation) — no attachment images */}
-          <div className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200" style={{ borderRadius: 0 }}>
-          <div
-            ref={invoiceRef}
-            className="mx-auto max-w-md w-full overflow-hidden bg-white flex flex-col"
-            style={{ borderRadius: 0, pageBreakInside: "avoid" as const }}
-          >
-            {/* Company Header */}
-            <div className="px-6 py-5 text-white flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)", borderRadius: 0 }}>
-              <div>
-                <h2 className="text-xl font-bold tracking-tight">{t.appTitle}</h2>
-                <p className="mt-1 text-xs text-blue-100">{t.appSubtitle}</p>
-              </div>
-              <div className="px-4 py-2 text-center" style={{ background: "rgba(255,255,255,0.15)", borderRadius: 0 }}>
-                <p className="text-[10px] text-blue-100">{t.invoice}</p>
-                <p className="text-sm font-bold text-white">{order.order_number}</p>
-              </div>
-            </div>
-
-            {/* Invoice meta row */}
-            <div className="grid grid-cols-2 border-b border-slate-200">
-              <div className="p-3 border-r border-slate-200">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400">{t.invoiceId}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{order.order_number}</p>
-              </div>
-              <div className="p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400">{t.invoiceDate}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{dateStr}</p>
-              </div>
-            </div>
-
-            {/* Main content area — flex-grow to fill page */}
-            <div className="flex-1 flex flex-col px-6 py-4">
-              {/* Customer details */}
-              <div style={{ marginBottom: 16 }}>
-                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.clientName}</h4>
-                <div className="space-y-1.5">
-                  <Row label={t.clientName} value={order.client_name || "-"} />
-                  <Row label={t.clientPhone} value={order.client_phone} />
-                  {order.client_location_name && <Row label={t.clientLocation} value={order.client_location_name} />}
+          <div className="mx-auto bg-white shadow-2xl ring-1 ring-slate-200" style={{ width: "794px", maxWidth: "100%", overflow: "hidden" }}>
+            <div
+              ref={invoiceRef}
+              dir="rtl"
+              className="mx-auto flex w-full flex-col overflow-hidden bg-white text-slate-900"
+              style={{ width: "794px", height: "1123px", maxWidth: "100%", borderRadius: 0, pageBreakInside: "avoid", fontFamily: "Arial, sans-serif" }}
+            >
+              <header className="shrink-0 border-b-4 border-blue-600 bg-[#f0f7ff] px-9 pb-5 pt-6" style={{ height: 188 }}>
+                <div className="flex h-full items-center justify-between gap-8">
+                  <div className="w-[31%] text-right">
+                    <p className="text-sm font-bold leading-6 text-slate-900">{t.appTitle}</p>
+                    <p className="text-xs font-semibold leading-5 text-slate-700">{t.appSubtitle}</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-700">{t.invoice}: {order.order_number}</p>
+                  </div>
+                  <div className="flex w-[34%] flex-col items-center justify-center text-slate-800">
+                    <div className="text-[76px] font-black leading-[0.72] tracking-[-12px] text-slate-700">MZ</div>
+                    <p className="mt-3 text-[10px] font-medium tracking-wide text-slate-600">{t.appSubtitle}</p>
+                  </div>
+                  <div className="w-[31%] text-left">
+                    <div className="mb-3 inline-block bg-[#0c2f64] px-4 py-2 text-[10px] font-bold tracking-[0.18em] text-white" style={{ borderRadius: 0 }}>INVOICE</div>
+                    <h1 className="text-xl font-extrabold text-[#0c2f64]">{t.invoice}</h1>
+                    <p className="mt-2 text-[11px] font-bold text-blue-700">{order.order_number}</p>
+                    <p className="mt-1 text-[10px] text-slate-600">{t.invoiceDate}: {dateStr}</p>
+                  </div>
                 </div>
-              </div>
+              </header>
 
-              {/* Products table */}
-              <div style={{ marginBottom: 16 }}>
-                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.product}</h4>
-                <table className="w-full border-collapse" style={{ border: "1px solid #e5e7eb" }}>
-                  <thead>
-                    <tr className="bg-slate-50" style={{ borderBottom: "1px solid #e5e7eb" }}>
-                      <th className="text-right font-semibold text-slate-600" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{t.invoiceProduct}</th>
-                      <th className="text-center font-semibold text-slate-600" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{t.invoiceQty}</th>
-                      <th className="text-right font-semibold text-slate-600" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{t.invoiceUnitPrice}</th>
-                      <th className="text-right font-semibold text-slate-600" style={{ padding: "10px 12px", fontSize: 12 }}>{t.invoiceLineTotal}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderProducts.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="text-center text-slate-400" style={{ padding: "10px 12px", fontSize: 12 }}>-</td>
+              <main className="flex min-h-0 flex-1 flex-col px-9 py-5">
+                <div className="mb-5 grid shrink-0 grid-cols-2 gap-4">
+                  <section className="border border-slate-200 bg-[#f7faff] p-4 text-right" style={{ height: 106, borderRadius: 0 }}>
+                    <h2 className="mb-3 border-r-4 border-blue-500 pr-3 text-sm font-bold text-blue-700">{t.clientName}</h2>
+                    <p className="text-base font-extrabold text-slate-900">{order.client_name || "-"}</p>
+                    <p className="mt-2 text-[11px] text-slate-600">{t.clientPhone}: {order.client_phone}</p>
+                  </section>
+                  <section className="border border-slate-200 bg-[#f7faff] p-4 text-right" style={{ height: 106, borderRadius: 0 }}>
+                    <h2 className="mb-3 border-r-4 border-blue-500 pr-3 text-sm font-bold text-blue-700">{t.paymentMethod}</h2>
+                    <p className="text-base font-extrabold text-slate-900">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
+                    <p className="mt-2 text-[11px] text-slate-600">{t.invoiceDate}: {dateStr}</p>
+                  </section>
+                </div>
+
+                <section className="mb-4 shrink-0" style={{ pageBreakInside: "avoid" }}>
+                  <div className="mb-2 flex items-end justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-blue-600">ORDER DETAILS</p>
+                      <h2 className="mt-1 text-lg font-extrabold text-slate-900">{t.product}</h2>
+                    </div>
+                    <span className="text-[11px] text-slate-500">{orderProducts.length} {t.invoiceQty}</span>
+                  </div>
+                  <table className="w-full border-collapse text-right" style={{ border: "1px solid #dfe6ef", tableLayout: "fixed" }}>
+                    <thead>
+                      <tr className="bg-[#0c2f64] text-white">
+                        <th style={{ width: "46%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceProduct}</th>
+                        <th style={{ width: "14%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceQty}</th>
+                        <th style={{ width: "20%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceUnitPrice}</th>
+                        <th style={{ width: "20%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceLineTotal}</th>
                       </tr>
-                    ) : (
-                      orderProducts.map(({ product, qty, lineTotal }) => (
-                        <tr key={product.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                          <td style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>
-                            <p className="font-semibold text-slate-900">{product.name_ar}</p>
-                            <p className="text-slate-400" style={{ fontSize: 11 }}>{product.code} · {categoryLabels[product.category]?.[lang] || ""}</p>
-                          </td>
-                          <td className="text-center text-slate-700" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{qty}</td>
-                          <td className="text-right text-slate-700" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{product.price.toFixed(3)}</td>
-                          <td className="text-right font-bold text-blue-600" style={{ padding: "10px 12px", fontSize: 12 }}>{lineTotal.toFixed(3)}</td>
+                    </thead>
+                    <tbody>
+                      {orderProducts.length === 0 ? (
+                        <tr><td colSpan={4} className="text-center text-slate-400" style={{ padding: "12px", fontSize: 12 }}>-</td></tr>
+                      ) : orderProducts.map(({ product, qty, lineTotal }) => (
+                        <tr key={product.id} className="border-b border-slate-200 odd:bg-white even:bg-[#f7faff]">
+                          <td style={{ padding: "11px 12px", fontSize: 12 }}><p className="font-bold">{product.name_ar}</p><p className="mt-1 text-[10px] text-slate-500">{product.code} · {categoryLabels[product.category]?.[lang] || ""}</p></td>
+                          <td className="text-center" style={{ padding: "11px 12px", fontSize: 12 }}>{qty}</td>
+                          <td style={{ padding: "11px 12px", fontSize: 12 }}>{product.price.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</td>
+                          <td className="font-bold text-slate-900" style={{ padding: "11px 12px", fontSize: 12 }}>{lineTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
 
-              {/* Payment method */}
-              <div style={{ marginBottom: 16 }}>
-                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.paymentMethod}</h4>
-                <div className="border border-slate-200 p-3" style={{ borderRadius: 0 }}>
-                  <p className="text-sm font-semibold text-slate-900">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
+                <div className="grid min-h-0 flex-1 grid-cols-[1.35fr_0.9fr] gap-4" style={{ pageBreakInside: "avoid" }}>
+                  <section className="border border-blue-200 bg-[#f3f8ff] p-4 text-right" style={{ borderRadius: 0 }}>
+                    <h2 className="mb-3 border-r-4 border-blue-500 pr-3 text-base font-extrabold text-blue-800">{t.warrantyTerms}</h2>
+                    <div className="space-y-2 text-[10px] leading-[1.55] text-slate-700">
+                      {t.warrantyNote.split("\n").map((line, i) => <p key={i}>{line}</p>)}
+                    </div>
+                  </section>
+                  <section className="border border-slate-200 p-4 text-right" style={{ borderRadius: 0 }}>
+                    <h2 className="mb-4 border-r-4 border-blue-500 pr-3 text-base font-extrabold text-slate-900">{t.totalRevenue}</h2>
+                    <div className="space-y-3 text-[11px] text-slate-600">
+                      <div className="flex justify-between gap-3"><span>{t.totalRevenue}</span><strong>{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</strong></div>
+                      <div className="flex justify-between gap-3"><span>{t.paymentMethod}</span><strong>{order.payment_method === "bank" ? t.bankTransfer : t.cash}</strong></div>
+                    </div>
+                    <div className="mt-5 bg-[#0c2f64] p-5 text-white" style={{ borderRadius: 0 }}>
+                      <p className="text-[10px] font-semibold text-blue-100">{t.totalRevenue}</p>
+                      <p className="mt-2 text-2xl font-extrabold">{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+                      <p className="mt-2 text-[10px] text-blue-100">{t.warranty}: {warrantyLabel}</p>
+                    </div>
+                  </section>
                 </div>
-              </div>
+              </main>
 
-              {/* Warranty terms */}
-              <div style={{ marginBottom: 16 }}>
-                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.warrantyTerms}</h4>
-                <div className="border border-slate-200 p-3" style={{ borderRadius: 0 }}>
-                  <div className="space-y-1">
-                    {t.warrantyNote.split("\n").map((line, i) => (
-                      <p key={i} className="text-slate-700" style={{ fontSize: 11, lineHeight: 1.5 }}>{line}</p>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Attachments (hidden in PDF) */}
-              <div id="attachments-section">
-                {order.id_image_url && (
-                  <div className="border-t border-slate-200 p-3">
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" style={{ borderRadius: 0 }}>
-                      <span className="h-2 w-2 bg-emerald-500" style={{ borderRadius: 0 }} />
-                      {t.idImageAttached}
-                    </div>
-                    <img src={order.id_image_url} alt="ID" className="mt-1 w-full border border-slate-200 object-contain" style={{ maxHeight: 140, borderRadius: 0 }} />
-                  </div>
-                )}
-
-                {order.payment_method === "bank" && order.receipt_image_url && (
-                  <div className="border-t border-slate-200 p-3">
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" style={{ borderRadius: 0 }}>
-                      <span className="h-2 w-2 bg-emerald-500" style={{ borderRadius: 0 }} />
-                      {t.receiptAttached}
-                    </div>
-                    <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full border border-slate-200 object-contain" style={{ maxHeight: 140, borderRadius: 0 }} />
-                  </div>
-                )}
-
-                {order.final_photo_url && (
-                  <div className="border-t border-slate-200 p-3">
-                    <div className="mb-1.5 inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" style={{ borderRadius: 0 }}>
-                      <span className="h-2 w-2 bg-emerald-500" style={{ borderRadius: 0 }} />
-                      {t.finalPhotoAttached}
-                    </div>
-                    <img src={order.final_photo_url} alt="final" className="mt-1 w-full border border-slate-200 object-contain" style={{ maxHeight: 140, borderRadius: 0 }} />
-                  </div>
-                )}
-              </div>
+              <footer className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-[#f7faff] px-9 py-3 text-[10px] text-slate-600" style={{ height: 42, borderRadius: 0 }}>
+                <span>{t.appSubtitle}</span>
+                <strong className="text-[#0c2f64]">{t.appTitle}</strong>
+              </footer>
             </div>
-
-            {/* Total banner */}
-            <div className="px-6 py-3 text-white flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)", borderRadius: 0 }}>
-              <div className="min-w-0">
-                <p className="text-[11px] text-blue-100">{t.totalRevenue}</p>
-                <p className="text-lg font-bold leading-tight whitespace-nowrap">{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
-              </div>
-              <div className="min-w-0 text-right">
-                <p className="text-[11px] text-blue-100">{t.warranty}</p>
-                <p className="text-sm font-bold leading-tight whitespace-nowrap">{warrantyLabel}</p>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-slate-900 px-6 py-3 text-center" style={{ borderRadius: 0 }}>
-              <p className="text-[11px] text-slate-400">{t.appTitle}</p>
-              <p className="mt-0.5 text-[10px] text-slate-500">{t.appSubtitle}</p>
-            </div>
-          </div>
           </div>
         </div>
 
