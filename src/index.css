@@ -71,9 +71,30 @@ a[href*="bolt.new"],
 @media print {
   @page {
     size: A4;
-    margin: 8mm;
+    margin: 0;
   }
   body {
     background: #ffffff !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .invoice-print-area, .invoice-print-area * {
+    visibility: visible !important;
+  }
+  .invoice-print-area {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+  .invoice-no-print {
+    display: none !important;
   }
 }
