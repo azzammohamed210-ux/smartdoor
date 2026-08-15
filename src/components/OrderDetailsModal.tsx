@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { X, Check, MapPin, Upload, ImageIcon, Crosshair, XCircle, Package, ScanLine, Loader2 } from "lucide-react";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 import type { Lang, Strings } from "../locales";
 import { checklistItems, warrantyOptions } from "../locales";
 import type { WorkOrder, Technician, Product } from "../types";
@@ -24,6 +26,9 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
   const [technicianId, setTechnicianId] = useState(order?.technician_id || "");
   const [clientName, setClientName] = useState(order?.client_name || "");
   const [clientPhone, setClientPhone] = useState(order?.client_phone || "");
+  const [countryCode, setCountryCode] = useState(() => {
+    return localStorage.getItem("selected_country_code") || "om";
+  });
   const [clientLocationName, setClientLocationName] = useState(order?.client_location_name || "");
   const [gpsLink, setGpsLink] = useState(order?.gps_link || "");
   const [productId, setProductId] = useState(order?.product_id || "");
@@ -171,7 +176,7 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
       if (isCreate) {
         await createWorkOrder({
           technician_id: technicianId || undefined,
-          client_phone: clientPhone.trim(),
+          client_phone: clientPhone.replace(/[\s+]/g, "").trim(),
           client_location_name: clientLocationName,
           gps_link: gpsLink,
           notes: notes,
@@ -281,18 +286,24 @@ export default function OrderDetailsModal({ mode, lang, t, order, technicians, p
               </select>
             </div>
 
-            {/* Client phone - numeric keyboard */}
+            {/* Client phone - international phone input */}
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">{t.clientPhone} *</label>
-              <input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9+]*"
+              <PhoneInput
+                country={countryCode}
                 value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value.replace(/[^0-9+]/g, ""))}
-                className={inputCls}
-                placeholder="+9689XXXXXXXX"
-                dir="ltr"
+                onChange={(value: string, country: { countryCode?: string }) => {
+                  setClientPhone(value);
+                  if (country?.countryCode) {
+                    setCountryCode(country.countryCode);
+                    localStorage.setItem("selected_country_code", country.countryCode);
+                  }
+                }}
+                enableSearch
+                inputClass="!w-full !rounded-xl !border-slate-200 !bg-slate-50 !py-2.5 !text-slate-900 !outline-none !transition focus:!border-blue-400 focus:!bg-white"
+                containerClass="!w-full"
+                buttonClass="!rounded-l-xl !border-slate-200"
+                placeholder="9XXXXXXXX"
               />
             </div>
 

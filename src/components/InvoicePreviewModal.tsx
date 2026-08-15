@@ -49,6 +49,8 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        windowWidth: invoiceRef.current.scrollWidth,
+        windowHeight: invoiceRef.current.scrollHeight,
       });
     } finally {
       if (attachments) attachments.style.display = "";
@@ -57,17 +59,15 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 8;
-    const imgW = pageW - margin * 2;
+    const imgW = pageW;
     const imgH = (canvas.height * imgW) / canvas.width;
-    const scale = Math.min(1, (pageH - margin * 2) / imgH);
+    const scale = Math.min(1, pageH / imgH);
     const finalW = imgW * scale;
     const finalH = imgH * scale;
-    const offsetX = (pageW - finalW) / 2;
-    const offsetY = (pageH - finalH) / 2;
-    pdf.addImage(imgData, "PNG", offsetX, offsetY, finalW, finalH);
-    const safeName = (order.client_name || "client").replace(/[\\/:*?"<>|]/g, "_");
-    const fileName = `Invoice_${safeName}_${order.client_phone}.pdf`;
+    pdf.addImage(imgData, "PNG", 0, 0, finalW, finalH);
+    const safeId = (order.order_number || "order").replace(/[^a-zA-Z0-9_]/g, "_");
+    const safePhone = (order.client_phone || "").replace(/[^0-9]/g, "");
+    const fileName = `Invoice_${safeId}_${safePhone}.pdf`;
     const blob = pdf.output("blob");
     const file = new File([blob], fileName, { type: "application/pdf" });
     return { file, fileName };
@@ -75,13 +75,15 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
 
   const uploadInvoiceToStorage = async (file: File, fileName: string): Promise<{ url: string | null; error: string | null }> => {
     try {
+      const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const storagePath = `invoices/${safeFileName}`;
       const { error: uploadError } = await supabase.storage
         .from("product-videos")
-        .upload(`invoices/${fileName}`, file, { contentType: "application/pdf", upsert: true });
+        .upload(storagePath, file, { contentType: "application/pdf", upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage
         .from("product-videos")
-        .getPublicUrl(`invoices/${fileName}`);
+        .getPublicUrl(storagePath);
       const publicUrl = urlData?.publicUrl || null;
       if (!publicUrl) throw new Error("Failed to get public URL after upload");
       return { url: publicUrl, error: null };
