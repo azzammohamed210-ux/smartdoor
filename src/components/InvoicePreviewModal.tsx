@@ -84,10 +84,10 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
     const originalMaxWidth = target.style.maxWidth;
     const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
 
-    target.style.width = "794px";
-    target.style.height = "1123px";
-    target.style.minHeight = "1123px";
-    target.style.maxWidth = "794px";
+    target.style.width = "210mm";
+    target.style.height = "297mm";
+    target.style.minHeight = "297mm";
+    target.style.maxWidth = "none";
     if (attachments) attachments.style.display = "none";
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
@@ -239,11 +239,13 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div
-            ref={invoiceRef}
-            className="relative mx-auto flex w-[210mm] min-h-[297mm] flex-col justify-between overflow-hidden border border-gray-200 bg-white p-8 font-sans text-gray-800"
-            style={{ width: "794px", minHeight: "1123px", maxWidth: "100%", borderRadius: 0, pageBreakInside: "avoid" }}
-          >
+          <div className="w-full overflow-x-auto">
+            <div className="w-fit mx-auto">
+              <div
+                ref={invoiceRef}
+                className="relative flex w-[210mm] min-h-[297mm] flex-col justify-between overflow-hidden border border-gray-200 bg-white p-8 font-sans text-gray-800"
+                style={{ width: "210mm", minHeight: "297mm", borderRadius: 0, pageBreakInside: "avoid" }}
+              >
             <div className="absolute right-0 top-0 -z-0 h-48 w-48 rounded-full bg-blue-50 opacity-60 blur-2xl" />
             <div className="absolute left-10 top-10 -z-0 h-32 w-32 rounded-full bg-blue-50 opacity-60 blur-xl" />
 
@@ -314,6 +316,8 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
             </div>
 
             <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-4 text-[10px] text-gray-500"><p className="font-medium">شكراً لثقتكم بنا</p><p className="font-semibold">MZ SMART - سلطنة عمان، محافظة جنوب الباطنة، الرميس</p></div>
+              </div>
+            </div>
           </div>
         </div>
 
