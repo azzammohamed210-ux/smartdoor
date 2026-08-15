@@ -43,8 +43,10 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     const target = invoiceRef.current;
     const origMaxWidth = target.style.maxWidth;
     const origWidth = target.style.width;
+    const origHeight = target.style.height;
     target.style.maxWidth = "794px";
     target.style.width = "794px";
+    target.style.height = "1123px";
 
     const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
     if (attachments) attachments.style.display = "none";
@@ -57,12 +59,13 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
         backgroundColor: "#ffffff",
         logging: false,
         windowWidth: 794,
-        windowHeight: target.scrollHeight,
+        windowHeight: 1123,
       });
     } finally {
       if (attachments) attachments.style.display = "";
       target.style.maxWidth = origMaxWidth;
       target.style.width = origWidth;
+      target.style.height = origHeight;
     }
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
@@ -262,143 +265,150 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Clean client invoice (used for PDF generation) — no attachment images */}
-          <div className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200" style={{ borderRadius: "20px" }}>
+          <div className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200" style={{ borderRadius: 0 }}>
           <div
             ref={invoiceRef}
-            className="mx-auto max-w-md w-full overflow-hidden bg-white"
-            style={{ borderRadius: "20px" }}
+            className="mx-auto max-w-md w-full overflow-hidden bg-white flex flex-col"
+            style={{ borderRadius: 0, pageBreakInside: "avoid" as const }}
           >
-            <div className="px-5 pb-4 pt-5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold">{t.appTitle}</h2>
-                  <p className="mt-0.5 text-xs text-blue-100">{t.appSubtitle}</p>
+            {/* Company Header */}
+            <div className="px-6 py-5 text-white flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)", borderRadius: 0 }}>
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">{t.appTitle}</h2>
+                <p className="mt-1 text-xs text-blue-100">{t.appSubtitle}</p>
+              </div>
+              <div className="px-4 py-2 text-center" style={{ background: "rgba(255,255,255,0.15)", borderRadius: 0 }}>
+                <p className="text-[10px] text-blue-100">{t.invoice}</p>
+                <p className="text-sm font-bold text-white">{order.order_number}</p>
+              </div>
+            </div>
+
+            {/* Invoice meta row */}
+            <div className="grid grid-cols-2 border-b border-slate-200">
+              <div className="p-3 border-r border-slate-200">
+                <p className="text-[10px] uppercase tracking-wide text-slate-400">{t.invoiceId}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{order.order_number}</p>
+              </div>
+              <div className="p-3">
+                <p className="text-[10px] uppercase tracking-wide text-slate-400">{t.invoiceDate}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{dateStr}</p>
+              </div>
+            </div>
+
+            {/* Main content area — flex-grow to fill page */}
+            <div className="flex-1 flex flex-col px-6 py-4">
+              {/* Customer details */}
+              <div style={{ marginBottom: 16 }}>
+                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.clientName}</h4>
+                <div className="space-y-1.5">
+                  <Row label={t.clientName} value={order.client_name || "-"} />
+                  <Row label={t.clientPhone} value={order.client_phone} />
+                  {order.client_location_name && <Row label={t.clientLocation} value={order.client_location_name} />}
                 </div>
-                <div className="rounded-xl bg-white/15 px-3 py-1.5 text-center backdrop-blur">
-                  <p className="text-[10px] text-blue-100">{t.invoice}</p>
-                  <p className="text-sm font-bold text-white">{order.order_number}</p>
-                </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-px bg-slate-200">
-              <div className="bg-white p-3">
-                <p className="text-[10px] text-slate-400">{t.invoiceId}</p>
-                <p className="mt-0.5 text-sm font-semibold text-slate-900">{order.order_number}</p>
-              </div>
-              <div className="bg-white p-3">
-                <p className="text-[10px] text-slate-400">{t.invoiceDate}</p>
-                <p className="mt-0.5 text-sm font-semibold text-slate-900">{dateStr}</p>
-              </div>
-            </div>
-
-            <div className="border-t-2 border-slate-800 p-3">
-              <div className="space-y-2">
-                <Row label={t.clientName} value={order.client_name || "-"} />
-                <Row label={t.clientPhone} value={order.client_phone} />
-                {order.client_location_name && <Row label={t.clientLocation} value={order.client_location_name} />}
-              </div>
-            </div>
-
-            <div className="border-t-2 border-slate-800 p-3">
-              <h4 className="mb-2 text-sm font-bold text-slate-800">{t.product}</h4>
-              <div className="overflow-hidden rounded-xl border border-slate-200">
-                <table className="w-full text-sm">
+              {/* Products table */}
+              <div style={{ marginBottom: 16 }}>
+                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.product}</h4>
+                <table className="w-full border-collapse" style={{ border: "1px solid #e5e7eb" }}>
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
-                      <th className="px-2.5 py-2 text-right font-semibold">{t.invoiceProduct}</th>
-                      <th className="px-2 py-2 text-center font-semibold">{t.invoiceQty}</th>
-                      <th className="px-2 py-2 text-right font-semibold">{t.invoiceUnitPrice}</th>
-                      <th className="px-2.5 py-2 text-right font-semibold">{t.invoiceLineTotal}</th>
+                    <tr className="bg-slate-50" style={{ borderBottom: "1px solid #e5e7eb" }}>
+                      <th className="text-right font-semibold text-slate-600" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{t.invoiceProduct}</th>
+                      <th className="text-center font-semibold text-slate-600" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{t.invoiceQty}</th>
+                      <th className="text-right font-semibold text-slate-600" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{t.invoiceUnitPrice}</th>
+                      <th className="text-right font-semibold text-slate-600" style={{ padding: "10px 12px", fontSize: 12 }}>{t.invoiceLineTotal}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orderProducts.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-2.5 py-3 text-center text-slate-400">-</td>
+                        <td colSpan={4} className="text-center text-slate-400" style={{ padding: "10px 12px", fontSize: 12 }}>-</td>
                       </tr>
                     ) : (
                       orderProducts.map(({ product, qty, lineTotal }) => (
-                        <tr key={product.id} className="border-b border-slate-100 last:border-0">
-                          <td className="px-2.5 py-2.5">
+                        <tr key={product.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                          <td style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>
                             <p className="font-semibold text-slate-900">{product.name_ar}</p>
-                            <p className="text-xs text-slate-400">{product.code} · {categoryLabels[product.category]?.[lang] || ""}</p>
+                            <p className="text-slate-400" style={{ fontSize: 11 }}>{product.code} · {categoryLabels[product.category]?.[lang] || ""}</p>
                           </td>
-                          <td className="px-2 py-2.5 text-center text-slate-700">{qty}</td>
-                          <td className="px-2 py-2.5 text-right text-slate-700">{product.price.toFixed(3)}</td>
-                          <td className="px-2.5 py-2.5 text-right font-bold text-blue-600">{lineTotal.toFixed(3)}</td>
+                          <td className="text-center text-slate-700" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{qty}</td>
+                          <td className="text-right text-slate-700" style={{ padding: "10px 12px", borderRight: "1px solid #e5e7eb", fontSize: 12 }}>{product.price.toFixed(3)}</td>
+                          <td className="text-right font-bold text-blue-600" style={{ padding: "10px 12px", fontSize: 12 }}>{lineTotal.toFixed(3)}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            <div className="border-t-2 border-slate-800 p-3">
-              <h4 className="mb-2 text-sm font-bold text-slate-800">{t.paymentMethod}</h4>
-              <div className="rounded-xl border border-slate-200 p-2.5">
-                <p className="text-sm font-semibold text-slate-900">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
+              {/* Payment method */}
+              <div style={{ marginBottom: 16 }}>
+                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.paymentMethod}</h4>
+                <div className="border border-slate-200 p-3" style={{ borderRadius: 0 }}>
+                  <p className="text-sm font-semibold text-slate-900">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
+                </div>
+              </div>
+
+              {/* Warranty terms */}
+              <div style={{ marginBottom: 16 }}>
+                <h4 className="mb-2 text-sm font-bold text-slate-700" style={{ borderBottom: "2px solid #1e75e6", paddingBottom: 4 }}>{t.warrantyTerms}</h4>
+                <div className="border border-slate-200 p-3" style={{ borderRadius: 0 }}>
+                  <div className="space-y-1">
+                    {t.warrantyNote.split("\n").map((line, i) => (
+                      <p key={i} className="text-slate-700" style={{ fontSize: 11, lineHeight: 1.5 }}>{line}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachments (hidden in PDF) */}
+              <div id="attachments-section">
+                {order.id_image_url && (
+                  <div className="border-t border-slate-200 p-3">
+                    <div className="mb-1.5 inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" style={{ borderRadius: 0 }}>
+                      <span className="h-2 w-2 bg-emerald-500" style={{ borderRadius: 0 }} />
+                      {t.idImageAttached}
+                    </div>
+                    <img src={order.id_image_url} alt="ID" className="mt-1 w-full border border-slate-200 object-contain" style={{ maxHeight: 140, borderRadius: 0 }} />
+                  </div>
+                )}
+
+                {order.payment_method === "bank" && order.receipt_image_url && (
+                  <div className="border-t border-slate-200 p-3">
+                    <div className="mb-1.5 inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" style={{ borderRadius: 0 }}>
+                      <span className="h-2 w-2 bg-emerald-500" style={{ borderRadius: 0 }} />
+                      {t.receiptAttached}
+                    </div>
+                    <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full border border-slate-200 object-contain" style={{ maxHeight: 140, borderRadius: 0 }} />
+                  </div>
+                )}
+
+                {order.final_photo_url && (
+                  <div className="border-t border-slate-200 p-3">
+                    <div className="mb-1.5 inline-flex items-center gap-1.5 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" style={{ borderRadius: 0 }}>
+                      <span className="h-2 w-2 bg-emerald-500" style={{ borderRadius: 0 }} />
+                      {t.finalPhotoAttached}
+                    </div>
+                    <img src={order.final_photo_url} alt="final" className="mt-1 w-full border border-slate-200 object-contain" style={{ maxHeight: 140, borderRadius: 0 }} />
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="border-t-2 border-slate-800 p-3">
-              <h4 className="mb-1.5 text-sm font-bold text-slate-800">{t.warrantyTerms}</h4>
-              <div className="rounded-xl border border-slate-200 p-2.5">
-                <div className="space-y-1">
-                  {t.warrantyNote.split("\n").map((line, i) => (
-                    <p key={i} className="text-[11px] leading-snug text-slate-700">{line}</p>
-                  ))}
-                </div>
+            {/* Total banner */}
+            <div className="px-6 py-3 text-white flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)", borderRadius: 0 }}>
+              <div className="min-w-0">
+                <p className="text-[11px] text-blue-100">{t.totalRevenue}</p>
+                <p className="text-lg font-bold leading-tight whitespace-nowrap">{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
+              </div>
+              <div className="min-w-0 text-right">
+                <p className="text-[11px] text-blue-100">{t.warranty}</p>
+                <p className="text-sm font-bold leading-tight whitespace-nowrap">{warrantyLabel}</p>
               </div>
             </div>
 
-            <div id="attachments-section">
-              {order.id_image_url && (
-                <div className="border-t-2 border-slate-800 p-3">
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t.idImageAttached}
-                  </div>
-                  <img src={order.id_image_url} alt="ID" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-                </div>
-              )}
-
-              {order.payment_method === "bank" && order.receipt_image_url && (
-                <div className="border-t-2 border-slate-800 p-3">
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t.receiptAttached}
-                  </div>
-                  <img src={order.receipt_image_url} alt="receipt" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-                </div>
-              )}
-
-              {order.final_photo_url && (
-                <div className="border-t-2 border-slate-800 p-3">
-                  <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    {t.finalPhotoAttached}
-                  </div>
-                  <img src={order.final_photo_url} alt="final" className="mt-1 w-full rounded-xl border border-slate-200 object-contain" style={{ maxHeight: 140 }} />
-                </div>
-              )}
-            </div>
-
-            <div className="px-4 py-2.5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-blue-100">{t.totalRevenue}</p>
-                  <p className="text-lg font-bold leading-tight whitespace-nowrap">{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
-                </div>
-                <div className="min-w-0 text-right">
-                  <p className="text-[11px] text-blue-100">{t.warranty}</p>
-                  <p className="text-sm font-bold leading-tight whitespace-nowrap">{warrantyLabel}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-900 px-4 py-2 text-center">
+            {/* Footer */}
+            <div className="bg-slate-900 px-6 py-3 text-center" style={{ borderRadius: 0 }}>
               <p className="text-[11px] text-slate-400">{t.appTitle}</p>
               <p className="mt-0.5 text-[10px] text-slate-500">{t.appSubtitle}</p>
             </div>
@@ -472,9 +482,9 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between">
-      <span className="text-xs text-slate-400">{label}</span>
-      <span className="text-sm font-medium text-slate-900">{value}</span>
+    <div className="flex justify-between" style={{ padding: "4px 0" }}>
+      <span className="text-slate-400" style={{ fontSize: 12 }}>{label}</span>
+      <span className="font-medium text-slate-900" style={{ fontSize: 12 }}>{value}</span>
     </div>
   );
 }
