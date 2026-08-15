@@ -73,28 +73,26 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
   const generatePdf = async (): Promise<{ file: File; fileName: string } | null> => {
     if (!invoiceRef.current) return null;
 
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
     const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
     ]);
     const target = invoiceRef.current;
-    const originalWidth = target.style.width;
-    const originalHeight = target.style.height;
-    const originalMinHeight = target.style.minHeight;
-    const originalMaxWidth = target.style.maxWidth;
     const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
-
-    target.style.width = "210mm";
-    target.style.height = "297mm";
-    target.style.minHeight = "297mm";
-    target.style.maxWidth = "none";
     if (attachments) attachments.style.display = "none";
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    const renderScale = (window.devicePixelRatio || 1) * 2;
 
     let canvas: HTMLCanvasElement;
     try {
       canvas = await html2canvas(target, {
-        scale: 2,
+        scale: renderScale,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
@@ -103,10 +101,6 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
       });
     } finally {
       if (attachments) attachments.style.display = "";
-      target.style.width = originalWidth;
-      target.style.height = originalHeight;
-      target.style.minHeight = originalMinHeight;
-      target.style.maxWidth = originalMaxWidth;
     }
 
     const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
@@ -161,10 +155,19 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
     return String(value) || fallback;
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setExporting(true);
     try {
-      window.print();
+      const result = await generatePdf();
+      if (!result) return;
+      const url = URL.createObjectURL(result.file);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = result.fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error", error);
     } finally {
       setExporting(false);
     }
@@ -214,106 +217,202 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4 invoice-no-print" dir="rtl">
-      <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-slate-100 shadow-2xl sm:rounded-3xl invoice-no-print">
-        <div className="flex items-center justify-between bg-white px-5 py-4 invoice-no-print">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" dir="rtl">
+      <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-slate-100 shadow-2xl sm:rounded-3xl">
+        <div className="flex items-center justify-between bg-white px-5 py-4">
           <h3 className="text-lg font-bold text-slate-900">{t.invoicePreviewTitle}</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 invoice-no-print" aria-label="Close">
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 invoice-no-print">
-          <div className="w-full overflow-x-auto invoice-no-print">
-            <div className="w-fit mx-auto invoice-no-print">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="w-full overflow-x-auto">
+            <div className="mx-auto w-fit">
               <div
                 ref={invoiceRef}
-                className="invoice-print-area relative flex w-[210mm] min-h-[297mm] flex-col justify-between overflow-hidden border border-gray-200 bg-white p-8 font-sans text-gray-800"
-                style={{ width: "210mm", minHeight: "297mm", borderRadius: 0, pageBreakInside: "avoid" }}
+                dir="rtl"
+                className="relative flex min-w-[210mm] w-[210mm] min-h-[297mm] flex-col justify-between bg-white p-8 font-sans text-gray-800 shadow-md"
+                style={{ pageBreakInside: "avoid" }}
               >
-            <div className="absolute right-0 top-0 -z-0 h-48 w-48 rounded-full bg-blue-50 opacity-60 blur-2xl" />
-            <div className="absolute left-10 top-10 -z-0 h-32 w-32 rounded-full bg-blue-50 opacity-60 blur-xl" />
+                <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-blue-50 opacity-60 blur-2xl" />
+                <div className="absolute left-10 top-10 h-32 w-32 rounded-full bg-blue-50 opacity-60 blur-xl" />
 
-            <div className="relative z-10">
-              <div className="mb-6 flex items-start justify-between border-b border-gray-100 pb-6">
-                <div className="text-right text-xs leading-relaxed text-gray-700">
-                  <h2 className="mb-1 text-sm font-bold text-gray-900">{companyName}</h2>
-                  <p><span className="font-semibold">رقم السجل التجاري:</span> 1559756</p>
-                  <p><span className="font-semibold">رمز بريدي:</span> 110</p>
-                </div>
+                <div className="relative z-10 flex flex-col justify-between flex-1">
+                  <div>
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                      <div className="text-right text-xs leading-relaxed text-gray-700">
+                        <h2 className="mb-1 text-sm font-bold text-gray-900">{companyName}</h2>
+                        <p><span className="font-semibold">رقم السجل التجاري:</span> 1559756</p>
+                        <p><span className="font-semibold">رمز بريدي:</span> 110</p>
+                      </div>
 
-                <div className="text-center">
-                  <div className="text-4xl font-black italic tracking-widest text-[#0f2942]">M<span className="text-gray-500">Z</span></div>
-                  <p className="mt-1 text-[10px] font-bold tracking-tight text-gray-600">{companySubtitle}</p>
-                  <p className="text-[8px] uppercase tracking-widest text-gray-400">GATE AUTOMATION</p>
-                </div>
+                      <div className="text-center">
+                        <div className="text-4xl font-black italic tracking-widest text-[#0f2942]">M<span className="text-gray-500">Z</span></div>
+                        <p className="mt-1 text-[10px] font-bold tracking-tight text-gray-600">{companySubtitle}</p>
+                        <p className="text-[8px] uppercase tracking-widest text-gray-400">GATE AUTOMATION</p>
+                      </div>
 
-                <div className="text-left">
-                  <span className="mb-2 inline-block rounded-sm bg-[#0f2942] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">INVOICE</span>
-                  <h3 className="text-lg font-bold text-gray-900">فاتورة / أمر عمل</h3>
-                  <p className="text-xs font-semibold text-blue-600">{order.order_number || "WO-202608-7666"}</p>
-                  <p className="mt-1 text-[10px] text-gray-500">التاريخ: {dateValue} - الوقت: {timeValue}</p>
-                </div>
-              </div>
+                      <div className="text-left">
+                        <span className="mb-2 inline-block rounded-sm bg-[#0f2942] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">INVOICE</span>
+                        <h3 className="text-lg font-bold text-gray-900">فاتورة / أمر عمل</h3>
+                        <p className="text-xs font-semibold text-blue-600">{order.order_number || "WO-202608-7666"}</p>
+                        <p className="mt-1 text-[10px] text-gray-500">التاريخ: {dateValue} - الوقت: {timeValue}</p>
+                      </div>
+                    </div>
 
-              <div className="mb-6 grid grid-cols-2 gap-4">
-                <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
-                  <div className="mb-2 flex items-center gap-2"><span className="inline-block h-3 w-1 bg-blue-500" /><h4 className="text-xs font-bold text-gray-500">بيانات العميل</h4></div>
-                  <p className="text-base font-bold text-gray-900">{order.client_name || "-"}</p>
-                  <p className="mt-1 text-xs text-gray-600" dir="ltr">{order.client_phone || "-"}</p>
-                </div>
-                <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
-                  <div className="mb-2 flex items-center gap-2"><span className="inline-block h-3 w-1 bg-blue-500" /><h4 className="text-xs font-bold text-gray-500">ملخص العملية</h4></div>
-                  <div className="flex justify-between text-xs">
-                    <div><p className="text-[10px] text-gray-400">فترة الضمان</p><p className="font-bold text-gray-800">{warrantyLabel}</p></div>
-                    <div><p className="text-[10px] text-gray-400">طريقة الدفع</p><p className="font-bold text-gray-800">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p></div>
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="inline-block h-3 w-1 bg-blue-500" />
+                          <h4 className="text-xs font-bold text-gray-500">بيانات العميل</h4>
+                        </div>
+                        <p className="text-base font-bold text-gray-900">{order.client_name || "-"}</p>
+                        <p className="mt-1 text-xs text-gray-600" dir="ltr">{order.client_phone || "-"}</p>
+                      </div>
+                      <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="inline-block h-3 w-1 bg-blue-500" />
+                          <h4 className="text-xs font-bold text-gray-500">ملخص العملية</h4>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <div>
+                            <p className="text-[10px] text-gray-400">فترة الضمان</p>
+                            <p className="font-bold text-gray-800">{warrantyLabel}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400">طريقة الدفع</p>
+                            <p className="font-bold text-gray-800">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <div className="mb-2 flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-gray-700">تفاصيل المنتجات والخدمات</h4>
+                        <span className="text-[10px] text-gray-400">{invoiceItems.length || 0} {itemCountLabel}</span>
+                      </div>
+                      <table className="w-full border-collapse text-right">
+                        <thead>
+                          <tr className="bg-[#0f2942] text-xs text-white">
+                            <th className="p-3 font-semibold">المنتج / الخدمة</th>
+                            <th className="p-3 text-center font-semibold">الكمية</th>
+                            <th className="p-3 text-left font-semibold">سعر الوحدة</th>
+                            <th className="p-3 text-left font-semibold">الإجمالي</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 border-b border-gray-100 text-xs">
+                          {invoiceItems.length > 0 ? invoiceItems.map((item, index) => (
+                            <tr key={`${item.code}-${index}`} className="hover:bg-gray-50/50">
+                              <td className="p-3">
+                                <p className="font-bold text-gray-900">{item.name}</p>
+                                <p className="text-[10px] text-gray-400">{item.code}</p>
+                              </td>
+                              <td className="p-3 text-center font-medium">{item.qty}</td>
+                              <td className="p-3 text-left font-medium">{item.unitPrice} {currency}</td>
+                              <td className="p-3 text-left font-bold text-gray-900">{item.total} {currency}</td>
+                            </tr>
+                          )) : (
+                            <tr><td colSpan={4} className="p-3 text-center text-gray-400">-</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="grid grid-cols-12 items-start gap-6">
+                      <div className="col-span-7 rounded border border-gray-100 bg-gray-50/50 p-4 text-[10px] leading-relaxed">
+                        <h5 className="mb-2 border-b border-gray-200 pb-1 text-xs font-bold text-gray-900">الضمان والشروط</h5>
+                        <ul className="list-inside list-disc space-y-1.5 text-gray-600">
+                          <li><strong className="text-gray-800">نطاق التغطية:</strong> يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.</li>
+                          <li><strong className="text-gray-800">العوامل الجوية:</strong> لا يشمل الضمان الأعطال أو الأضرار الناتجة عن سوء الأحوال والعوامل الجوية.</li>
+                          <li><strong className="text-gray-800">التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب أو ارتفاع وانخفاض التيار الكهربائي في الموقع.</li>
+                          <li><strong className="text-gray-800">الهدية المجانية:</strong> لا يشمل الضمان جهاز الاتصال كونه هدية مجانية.</li>
+                        </ul>
+                        <p className="mt-3 text-[9px] font-semibold text-gray-400">يرجى الاحتفاظ بهذه الفاتورة لإثبات الضمان والخدمة.</p>
+                      </div>
+
+                      <div className="col-span-5 space-y-2 text-xs">
+                        <h5 className="mb-2 border-b border-gray-200 pb-1 font-bold text-gray-900">ملخص المبلغ</h5>
+                        <div className="flex justify-between text-gray-600">
+                          <span>الإجمالي الفرعي:</span>
+                          <span>{subtotal} {currency}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600">
+                          <span>الضريبة / الخصم:</span>
+                          <span>0.000 {currency}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-100 pt-1 text-sm font-bold text-gray-900">
+                          <span>الإجمالي:</span>
+                          <span>{subtotal} {currency}</span>
+                        </div>
+                        <div className="mt-4 rounded bg-[#0f2942] p-4 text-center text-white">
+                          <p className="mb-1 text-[10px] text-gray-300">المبلغ المدفوع إجمالاً</p>
+                          <p className="text-2xl font-black tracking-wide">{subtotal} {currency}</p>
+                          <p className="mt-1 text-[9px] text-gray-400">المتبقي: 0.000 {currency}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-4 text-[10px] text-gray-500">
+                    <p className="font-medium">شكراً لثقتكم بنا</p>
+                    <p className="font-semibold">MZ SMART - سلطنة عمان، محافظة جنوب الباطنة، الرميس</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="mb-6">
-                <div className="mb-2 flex items-center justify-between"><h4 className="text-xs font-bold text-gray-700">تفاصيل المنتجات والخدمات</h4><span className="text-[10px] text-gray-400">{invoiceItems.length || 0} {itemCountLabel}</span></div>
-                <table className="w-full border-collapse text-right">
-                  <thead><tr className="bg-[#0f2942] text-xs text-white"><th className="p-3 font-semibold">المنتج / الخدمة</th><th className="p-3 text-center font-semibold">الكمية</th><th className="p-3 text-left font-semibold">سعر الوحدة</th><th className="p-3 text-left font-semibold">الإجمالي</th></tr></thead>
-                  <tbody className="divide-y divide-gray-100 border-b border-gray-100 text-xs">
-                    {invoiceItems.length > 0 ? invoiceItems.map((item, index) => (
-                      <tr key={`${item.code}-${index}`} className="hover:bg-gray-50/50"><td className="p-3"><p className="font-bold text-gray-900">{item.name}</p><p className="text-[10px] text-gray-400">{item.code}</p></td><td className="p-3 text-center font-medium">{item.qty}</td><td className="p-3 text-left font-medium">{item.unitPrice} {currency}</td><td className="p-3 text-left font-bold text-gray-900">{item.total} {currency}</td></tr>
-                    )) : <tr><td colSpan={4} className="p-3 text-center text-gray-400">-</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="grid grid-cols-12 items-start gap-6">
-                <div className="col-span-7 rounded border border-gray-100 bg-gray-50/50 p-4 text-[10px] leading-relaxed">
-                  <h5 className="mb-2 border-b border-gray-200 pb-1 text-xs font-bold text-gray-900">الضمان والشروط</h5>
-                  <ul className="list-inside list-disc space-y-1.5 text-gray-600"><li><strong className="text-gray-800">نطاق التغطية:</strong> يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.</li><li><strong className="text-gray-800">العوامل الجوية:</strong> لا يشمل الضمان الأعطال أو الأضرار الناتجة عن سوء الأحوال والعوامل الجوية.</li><li><strong className="text-gray-800">التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب أو ارتفاع وانخفاض التيار الكهربائي في الموقع.</li><li><strong className="text-gray-800">الهدية المجانية:</strong> لا يشمل الضمان جهاز الاتصال كونه هدية مجانية.</li></ul>
-                  <p className="mt-3 text-[9px] font-semibold text-gray-400">يرجى الاحتفاظ بهذه الفاتورة لإثبات الضمان والخدمة.</p>
-                </div>
-
-                <div className="col-span-5 space-y-2 text-xs">
-                  <h5 className="mb-2 border-b border-gray-200 pb-1 font-bold text-gray-900">ملخص المبلغ</h5>
-                  <div className="flex justify-between text-gray-600"><span>الإجمالي الفرعي:</span><span>{subtotal} {currency}</span></div>
-                  <div className="flex justify-between text-gray-600"><span>الضريبة / الخصم:</span><span>0.000 {currency}</span></div>
-                  <div className="flex justify-between border-t border-gray-100 pt-1 text-sm font-bold text-gray-900"><span>الإجمالي:</span><span>{subtotal} {currency}</span></div>
-                  <div className="mt-4 rounded bg-[#0f2942] p-4 text-center text-white"><p className="mb-1 text-[10px] text-gray-300">المبلغ المدفوع إجمالاً</p><p className="text-2xl font-black tracking-wide">{subtotal} {currency}</p><p className="mt-1 text-[9px] text-gray-400">المتبقي: 0.000 {currency}</p></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-4 text-[10px] text-gray-500"><p className="font-medium">شكراً لثقتكم بنا</p><p className="font-semibold">MZ SMART - سلطنة عمان، محافظة جنوب الباطنة، الرميس</p></div>
               </div>
             </div>
           </div>
         </div>
 
-        {sending && progressMsg && <div className="border-t border-blue-200 bg-blue-50 px-5 py-3 invoice-no-print"><div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /><span className="text-sm font-medium text-blue-700">{progressMsg}</span></div></div>}
-        {!sending && exported && <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3 invoice-no-print"><div className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-600" /><span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span></div></div>}
-        {sendError && <div className="border-t border-red-200 bg-red-50 px-5 py-3 invoice-no-print"><span className="text-sm font-medium text-red-600">{sendError}</span></div>}
+        {sending && progressMsg && (
+          <div className="border-t border-blue-200 bg-blue-50 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-blue-700">{progressMsg}</span>
+            </div>
+          </div>
+        )}
+        {!sending && exported && (
+          <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span>
+            </div>
+          </div>
+        )}
+        {sendError && (
+          <div className="border-t border-red-200 bg-red-50 px-5 py-3">
+            <span className="text-sm font-medium text-red-600">{sendError}</span>
+          </div>
+        )}
 
-        <div className="flex gap-3 border-t border-slate-200 bg-white p-4 invoice-no-print">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 invoice-no-print">{t.cancel}</button>
-          <button onClick={handleExport} disabled={exporting || sending} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 invoice-no-print" title={t.downloadInvoice}><Download className="h-5 w-5" /><span className="hidden sm:inline">{t.downloadInvoice}</span></button>
-          <button onClick={handleSend} disabled={exporting || sending} className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50 invoice-no-print">{sending ? <><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">{progressMsg || "..."}</span></> : exported ? <><Check className="h-5 w-5" />{t.allSentSuccess}</> : <><Send className="h-5 w-5" />{t.sendToCustomer}</>}</button>
+        <div className="flex gap-3 border-t border-slate-200 bg-white p-4">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50">
+            {t.cancel}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting || sending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            title={t.downloadInvoice}
+          >
+            {exporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+            <span className="hidden sm:inline">{t.downloadInvoice}</span>
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={exporting || sending}
+            className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
+          >
+            {sending ? (
+              <><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">{progressMsg || "..."}</span></>
+            ) : exported ? (
+              <><Check className="h-5 w-5" />{t.allSentSuccess}</>
+            ) : (
+              <><Send className="h-5 w-5" />{t.sendToCustomer}</>
+            )}
+          </button>
         </div>
       </div>
     </div>
