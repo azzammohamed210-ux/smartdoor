@@ -12,13 +12,20 @@ export interface SendGreenApiInvoiceOptions {
   message?: string;
 }
 
+function normalizeGreenApiUrl(rawUrl: string): string {
+  return (rawUrl || "https://7107.api.greenapi.com")
+    .replace(/[\[\]{}()]/g, "")
+    .trim()
+    .replace(/\/+$/, "");
+}
+
 function getGreenApiConfig() {
   const env = import.meta.env as Record<string, string | undefined>;
 
   return {
-    url: env.VITE_GREEN_API_URL || env.GREEN_API_URL || "https://7107.api.greenapi.com",
-    idInstance: env.VITE_GREEN_API_ID_INSTANCE || env.GREEN_API_ID_INSTANCE || "",
-    tokenInstance: env.VITE_GREEN_API_TOKEN_INSTANCE || env.GREEN_API_TOKEN_INSTANCE || "",
+    url: normalizeGreenApiUrl(env.VITE_GREEN_API_URL || env.GREEN_API_URL || "https://7107.api.greenapi.com"),
+    idInstance: (env.VITE_GREEN_API_ID_INSTANCE || env.GREEN_API_ID_INSTANCE || "").trim(),
+    tokenInstance: (env.VITE_GREEN_API_TOKEN_INSTANCE || env.GREEN_API_TOKEN_INSTANCE || "").trim(),
   };
 }
 

@@ -22,7 +22,7 @@ interface SendRequestBody {
 
 function normalizeGreenApiUrl(rawUrl: string): string {
   return (rawUrl || "https://7107.api.greenapi.com")
-    .replace(/[\[\]]/g, "")
+    .replace(/[\[\]{}()]/g, "")
     .trim()
     .replace(/\/+$/, "");
 }
