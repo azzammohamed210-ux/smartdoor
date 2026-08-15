@@ -39,21 +39,30 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       import("html2canvas"),
       import("jspdf"),
     ]);
-    const attachments = invoiceRef.current.querySelector("#attachments-section") as HTMLElement | null;
+
+    const target = invoiceRef.current;
+    const origMaxWidth = target.style.maxWidth;
+    const origWidth = target.style.width;
+    target.style.maxWidth = "794px";
+    target.style.width = "794px";
+
+    const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
     if (attachments) attachments.style.display = "none";
     await new Promise((r) => requestAnimationFrame(r));
     let canvas: HTMLCanvasElement;
     try {
-      canvas = await html2canvas(invoiceRef.current, {
+      canvas = await html2canvas(target, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
-        windowWidth: invoiceRef.current.scrollWidth,
-        windowHeight: invoiceRef.current.scrollHeight,
+        windowWidth: 794,
+        windowHeight: target.scrollHeight,
       });
     } finally {
       if (attachments) attachments.style.display = "";
+      target.style.maxWidth = origMaxWidth;
+      target.style.width = origWidth;
     }
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
@@ -256,7 +265,7 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
           <div className="mx-auto max-w-md overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200" style={{ borderRadius: "20px" }}>
           <div
             ref={invoiceRef}
-            className="mx-auto max-w-md overflow-hidden bg-white"
+            className="mx-auto max-w-md w-full overflow-hidden bg-white"
             style={{ borderRadius: "20px" }}
           >
             <div className="px-5 pb-4 pt-5 text-white" style={{ background: "linear-gradient(135deg, #1e75e6 0%, #0066fe 100%)" }}>
