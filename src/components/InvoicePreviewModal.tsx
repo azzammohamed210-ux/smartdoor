@@ -161,10 +161,19 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
     return String(value) || fallback;
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setExporting(true);
     try {
-      window.print();
+      const result = await generatePdf();
+      if (!result) return;
+      const url = URL.createObjectURL(result.file);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = result.fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error", error);
     } finally {
       setExporting(false);
     }
@@ -200,6 +209,12 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
         invoiceCaption: translations[lang].whatsappMessage(order),
         media: mediaItems,
       });
+      const downloadUrl = URL.createObjectURL(result.file);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = result.fileName;
+      anchor.click();
+      URL.revokeObjectURL(downloadUrl);
       setProgressMsg(t.allSentSuccess);
       setExported(true);
       setTimeout(() => {
@@ -214,21 +229,21 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4 invoice-no-print" dir="rtl">
-      <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-slate-100 shadow-2xl sm:rounded-3xl invoice-no-print">
-        <div className="flex items-center justify-between bg-white px-5 py-4 invoice-no-print">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" dir="rtl">
+      <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-slate-100 shadow-2xl sm:rounded-3xl">
+        <div className="flex items-center justify-between bg-white px-5 py-4">
           <h3 className="text-lg font-bold text-slate-900">{t.invoicePreviewTitle}</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 invoice-no-print" aria-label="Close">
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 invoice-no-print">
-          <div className="w-full overflow-x-auto invoice-no-print">
-            <div className="w-fit mx-auto invoice-no-print">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="w-full overflow-x-auto">
+            <div className="w-fit mx-auto">
               <div
                 ref={invoiceRef}
-                className="invoice-print-area relative flex w-[210mm] min-h-[297mm] flex-col justify-between overflow-hidden border border-gray-200 bg-white p-8 font-sans text-gray-800"
+                className="relative flex w-[210mm] min-h-[297mm] flex-col justify-between overflow-hidden border border-gray-200 bg-white p-8 font-sans text-gray-800"
                 style={{ width: "210mm", minHeight: "297mm", borderRadius: 0, pageBreakInside: "avoid" }}
               >
             <div className="absolute right-0 top-0 -z-0 h-48 w-48 rounded-full bg-blue-50 opacity-60 blur-2xl" />
@@ -306,14 +321,14 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
           </div>
         </div>
 
-        {sending && progressMsg && <div className="border-t border-blue-200 bg-blue-50 px-5 py-3 invoice-no-print"><div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /><span className="text-sm font-medium text-blue-700">{progressMsg}</span></div></div>}
-        {!sending && exported && <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3 invoice-no-print"><div className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-600" /><span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span></div></div>}
-        {sendError && <div className="border-t border-red-200 bg-red-50 px-5 py-3 invoice-no-print"><span className="text-sm font-medium text-red-600">{sendError}</span></div>}
+        {sending && progressMsg && <div className="border-t border-blue-200 bg-blue-50 px-5 py-3"><div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /><span className="text-sm font-medium text-blue-700">{progressMsg}</span></div></div>}
+        {!sending && exported && <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3"><div className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-600" /><span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span></div></div>}
+        {sendError && <div className="border-t border-red-200 bg-red-50 px-5 py-3"><span className="text-sm font-medium text-red-600">{sendError}</span></div>}
 
-        <div className="flex gap-3 border-t border-slate-200 bg-white p-4 invoice-no-print">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 invoice-no-print">{t.cancel}</button>
-          <button onClick={handleExport} disabled={exporting || sending} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 invoice-no-print" title={t.downloadInvoice}><Download className="h-5 w-5" /><span className="hidden sm:inline">{t.downloadInvoice}</span></button>
-          <button onClick={handleSend} disabled={exporting || sending} className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50 invoice-no-print">{sending ? <><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">{progressMsg || "..."}</span></> : exported ? <><Check className="h-5 w-5" />{t.allSentSuccess}</> : <><Send className="h-5 w-5" />{t.sendToCustomer}</>}</button>
+        <div className="flex gap-3 border-t border-slate-200 bg-white p-4">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50">{t.cancel}</button>
+          <button onClick={handleExport} disabled={exporting || sending} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50" title={t.downloadInvoice}><Download className="h-5 w-5" /><span className="hidden sm:inline">{t.downloadInvoice}</span></button>
+          <button onClick={handleSend} disabled={exporting || sending} className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50">{sending ? <><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">{progressMsg || "..."}</span></> : exported ? <><Check className="h-5 w-5" />{t.allSentSuccess}</> : <><Send className="h-5 w-5" />{t.sendToCustomer}</>}</button>
         </div>
       </div>
     </div>
