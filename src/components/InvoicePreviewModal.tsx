@@ -1,8 +1,8 @@
-import { useRef, useState, useMemo } from "react";
-import { X, Download, MessageCircle, Check, Loader2, Send } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, Download, Loader2, Send, X } from "lucide-react";
 import type { Lang, Strings } from "../locales";
-import { translations, categoryLabels, warrantyOptions } from "../locales";
-import type { WorkOrder, Product } from "../types";
+import { categoryLabels, translations, warrantyOptions } from "../locales";
+import type { Product, WorkOrder } from "../types";
 import { supabase } from "../lib/supabaseClient";
 import { sendWhatsAppDirect } from "../services/whatsapp";
 
@@ -15,7 +15,15 @@ interface Props {
   onClose: () => void;
 }
 
-export default function InvoicePreviewModal({ lang, t, order, products, onConfirm, onClose }: Props) {
+interface InvoiceItem {
+  name: string;
+  code: string;
+  qty: number;
+  unitPrice: string;
+  total: string;
+}
+
+export default function InvoicePreviewModal({ lang, t, order, products, onClose }: Props) {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
@@ -24,33 +32,65 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
   const [sendError, setSendError] = useState("");
 
   const orderProducts = useMemo(() => {
-    const ids = order.product_ids && order.product_ids.length > 0 ? order.product_ids : (order.product_id ? [order.product_id] : []);
+    const ids = order.product_ids && order.product_ids.length > 0
+      ? order.product_ids
+      : order.product_id
+        ? [order.product_id]
+        : [];
+
     return products
-      .filter(p => ids.includes(p.id))
-      .map(p => ({ product: p, qty: 1, lineTotal: p.price }));
-  }, [order.product_ids, order.product_id, products]);
-  const grandTotal = orderProducts.reduce((sum, p) => sum + p.lineTotal, 0);
-  const dateStr = new Date().toLocaleString(lang === "ar" ? "ar-OM" : "en-GB");
-  const warrantyLabel = warrantyOptions.find(w => w.value === String(order.warranty_months))?.[lang === "ar" ? "label_ar" : "label_en"] || (lang === "ar" ? "سنة" : "1 year");
+      .filter((product) => ids.includes(product.id))
+      .map((product) => ({ product, qty: 1, lineTotal: product.price }));
+  }, [order.product_id, order.product_ids, products]);
+
+  const grandTotal = orderProducts.reduce((sum, item) => sum + item.lineTotal, 0);
+  const invoiceDate = new Date();
+  const dateValue = invoiceDate.toLocaleDateString(lang === "ar" ? "ar-OM" : "en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const timeValue = invoiceDate.toLocaleTimeString(lang === "ar" ? "ar-OM" : "en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const warrantyLabel = warrantyOptions.find((option) => option.value === String(order.warranty_months))?.[
+    lang === "ar" ? "label_ar" : "label_en"
+  ] || (lang === "ar" ? "سنة" : "1 year");
+  const currency = lang === "ar" ? "ر.ع" : "OMR";
+  const invoiceItems: InvoiceItem[] = orderProducts.map(({ product, qty, lineTotal }) => ({
+    name: product.name_ar,
+    code: `${product.code} - ${categoryLabels[product.category]?.[lang] || ""}`,
+    qty,
+    unitPrice: product.price.toFixed(3),
+    total: lineTotal.toFixed(3),
+  }));
+  const subtotal = grandTotal.toFixed(3);
+  const itemCountLabel = lang === "ar" ? "بنود" : "items";
+  const companyName = lang === "ar" ? "محمد الزغل الرائدة ش م م" : t.appTitle;
+  const companySubtitle = lang === "ar" ? "Projects Mohammad Alzaghal Investment" : t.appSubtitle;
 
   const generatePdf = async (): Promise<{ file: File; fileName: string } | null> => {
     if (!invoiceRef.current) return null;
+
     const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
     ]);
-
     const target = invoiceRef.current;
-    const origMaxWidth = target.style.maxWidth;
-    const origWidth = target.style.width;
-    const origHeight = target.style.height;
-    target.style.maxWidth = "794px";
+    const originalWidth = target.style.width;
+    const originalHeight = target.style.height;
+    const originalMinHeight = target.style.minHeight;
+    const originalMaxWidth = target.style.maxWidth;
+    const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
+
     target.style.width = "794px";
     target.style.height = "1123px";
-
-    const attachments = target.querySelector("#attachments-section") as HTMLElement | null;
+    target.style.minHeight = "1123px";
+    target.style.maxWidth = "794px";
     if (attachments) attachments.style.display = "none";
-    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
     let canvas: HTMLCanvasElement;
     try {
       canvas = await html2canvas(target, {
@@ -63,26 +103,24 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       });
     } finally {
       if (attachments) attachments.style.display = "";
-      target.style.maxWidth = origMaxWidth;
-      target.style.width = origWidth;
-      target.style.height = origHeight;
+      target.style.width = originalWidth;
+      target.style.height = originalHeight;
+      target.style.minHeight = originalMinHeight;
+      target.style.maxWidth = originalMaxWidth;
     }
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ unit: "pt", format: "a4" });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    const scale = Math.min(1, pageH / imgH);
-    const finalW = imgW * scale;
-    const finalH = imgH * scale;
-    pdf.addImage(imgData, "PNG", 0, 0, finalW, finalH);
+
+    const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imageHeight = (canvas.height * pageWidth) / canvas.width;
+    const imageScale = Math.min(1, pageHeight / imageHeight);
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pageWidth * imageScale, imageHeight * imageScale);
+
     const safeId = (order.order_number || "order").replace(/[^a-zA-Z0-9_]/g, "_");
     const safePhone = (order.client_phone || "").replace(/[^0-9]/g, "");
     const fileName = `Invoice_${safeId}_${safePhone}.pdf`;
     const blob = pdf.output("blob");
-    const file = new File([blob], fileName, { type: "application/pdf" });
-    return { file, fileName };
+    return { file: new File([blob], fileName, { type: "application/pdf" }), fileName };
   };
 
   const uploadInvoiceToStorage = async (file: File, fileName: string): Promise<{ url: string | null; error: string | null }> => {
@@ -93,62 +131,33 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
         .from("product-videos")
         .upload(storagePath, file, { contentType: "application/pdf", upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage
-        .from("product-videos")
-        .getPublicUrl(storagePath);
-      const publicUrl = urlData?.publicUrl || null;
+      const { data } = supabase.storage.from("product-videos").getPublicUrl(storagePath);
+      const publicUrl = data?.publicUrl || null;
       if (!publicUrl) throw new Error("Failed to get public URL after upload");
       return { url: publicUrl, error: null };
-    } catch (e: any) {
-      const detail = e?.message || String(e) || "Unknown error";
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : String(error);
       console.error("Invoice upload error:", detail);
-      return { url: null, error: detail };
+      return { url: null, error: detail || "Unknown error" };
     }
   };
 
-  const normalizePhoneForGreenApi = (phone: string): string => {
-    return (phone || "").replace(/[\s+]/g, "").replace(/[^\d]/g, "");
-  };
+  const normalizePhoneForGreenApi = (phone: string): string => phone.replace(/[\s+]/g, "").replace(/[^\d]/g, "");
 
   const getDisplayError = (value: unknown, fallback: string): string => {
     if (!value) return fallback;
-
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      return trimmed || fallback;
-    }
-
-    if (value instanceof Error) {
-      return value.message || fallback;
-    }
-
+    if (typeof value === "string") return value.trim() || fallback;
+    if (value instanceof Error) return value.message || fallback;
     if (typeof value === "object") {
       const record = value as Record<string, unknown>;
-
       const direct = record.error ?? record.message ?? record.details ?? record.detail;
       if (typeof direct === "string" && direct.trim()) return direct.trim();
-
-      const nestedResults = Array.isArray(record.results)
-        ? record.results
-            .map((item) => {
-              if (!item || typeof item !== "object") return "";
-              const itemRecord = item as Record<string, unknown>;
-              const detail = itemRecord.detail ?? itemRecord.message ?? itemRecord.error;
-              return typeof detail === "string" && detail.trim() ? detail.trim() : "";
-            })
-            .filter(Boolean)
-        : [];
-
-      if (nestedResults.length) return nestedResults.join(" | ");
-
       try {
-        const jsonText = JSON.stringify(value);
-        return jsonText && jsonText !== "{}" ? jsonText : fallback;
+        return JSON.stringify(value) || fallback;
       } catch {
         return fallback;
       }
     }
-
     return String(value) || fallback;
   };
 
@@ -156,16 +165,15 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
     setExporting(true);
     try {
       const result = await generatePdf();
-      if (result) {
-        const url = URL.createObjectURL(result.file);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = result.fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (e) {
-      console.error("Export error", e);
+      if (!result) return;
+      const url = URL.createObjectURL(result.file);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = result.fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error", error);
     } finally {
       setExporting(false);
     }
@@ -179,263 +187,146 @@ export default function InvoicePreviewModal({ lang, t, order, products, onConfir
       const result = await generatePdf();
       if (!result) {
         setSendError(t.sendError);
-        setSending(false);
         return;
       }
-
-      // Upload invoice PDF to Supabase Storage to get a public URL
-      const { url: invoiceUrl, error: invUploadErr } = await uploadInvoiceToStorage(result.file, result.fileName);
+      const { url: invoiceUrl, error: uploadError } = await uploadInvoiceToStorage(result.file, result.fileName);
       if (!invoiceUrl) {
-        setSendError(getDisplayError(invUploadErr, t.sendError));
-        setSending(false);
+        setSendError(getDisplayError(uploadError, t.sendError));
         return;
       }
-
-      // Build the list of product videos to send
       const mediaItems = orderProducts
         .filter(({ product }) => product.video_url)
         .map(({ product }) => ({
-          url: product.video_url!,
+          url: product.video_url as string,
           fileName: `Video_${product.name_ar}.mp4`,
-          caption: lang === "ar"
-            ? `🎬 فيديو شرح وطريقة استخدام: ${product.name_ar}`
-            : `🎬 Product guide video: ${product.name_ar}`,
+          caption: lang === "ar" ? `فيديو شرح وطريقة استخدام: ${product.name_ar}` : `Product guide video: ${product.name_ar}`,
         }));
-
-      // Build the invoice caption
-      const invoiceCaption = translations[lang].whatsappMessage(order);
-
-      // Format chatId for Green API without '+' or spaces
-      const cleanPhone = normalizePhoneForGreenApi(order.client_phone);
-      const chatId = `${cleanPhone}@c.us`;
-
-      // Update progress message for first video if any
-      if (mediaItems.length > 0) {
-        setProgressMsg(t.sendingVideo(orderProducts.find(({ product }) => product.video_url)?.product.name_ar || ""));
-      }
-
-      try {
-        await sendWhatsAppDirect({
-          chatId,
-          invoiceUrl,
-          invoiceCaption,
-          media: mediaItems,
-        });
-      } catch (error: any) {
-        const showText = error?.message || error?.toString() || t.sendError;
-        alert(showText);
-        setSendError(showText);
-        setSending(false);
-        return;
-      }
-
-      // Also download the invoice locally for the user's records
-      const dlUrl = URL.createObjectURL(result.file);
-      const a = document.createElement("a");
-      a.href = dlUrl;
-      a.download = result.fileName;
-      a.click();
-      URL.revokeObjectURL(dlUrl);
-
+      const chatId = `${normalizePhoneForGreenApi(order.client_phone)}@c.us`;
+      if (mediaItems.length > 0) setProgressMsg(t.sendingVideo(orderProducts[0]?.product.name_ar || ""));
+      await sendWhatsAppDirect({
+        chatId,
+        invoiceUrl,
+        invoiceCaption: translations[lang].whatsappMessage(order),
+        media: mediaItems,
+      });
+      const downloadUrl = URL.createObjectURL(result.file);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = result.fileName;
+      anchor.click();
+      URL.revokeObjectURL(downloadUrl);
       setProgressMsg(t.allSentSuccess);
       setExported(true);
       setTimeout(() => {
         setSending(false);
         setProgressMsg("");
       }, 2000);
-    } catch (e: any) {
-      console.error("Send error", e);
-      setSendError(getDisplayError(e, t.sendError));
+    } catch (error: unknown) {
+      console.error("Send error", error);
+      setSendError(getDisplayError(error, t.sendError));
       setSending(false);
     }
   };
 
-  const checkedSet = new Set(order.checklist || []);
-  void checkedSet;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" dir="rtl">
       <div className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-slate-100 shadow-2xl sm:rounded-3xl">
         <div className="flex items-center justify-between bg-white px-5 py-4">
           <h3 className="text-lg font-bold text-slate-900">{t.invoicePreviewTitle}</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100">
+          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="mx-auto bg-white shadow-2xl ring-1 ring-slate-200" style={{ width: "794px", maxWidth: "100%", overflow: "hidden" }}>
-            <div
-              ref={invoiceRef}
-              dir="rtl"
-              className="mx-auto flex w-full flex-col overflow-hidden bg-white text-slate-900"
-              style={{ width: "794px", height: "1123px", maxWidth: "100%", borderRadius: 0, pageBreakInside: "avoid", fontFamily: "Arial, sans-serif" }}
-            >
-              <header className="shrink-0 border-b-4 border-blue-600 bg-[#f0f7ff] px-9 pb-5 pt-6" style={{ height: 188 }}>
-                <div className="flex h-full items-center justify-between gap-8">
-                  <div className="w-[31%] text-right">
-                    <p className="text-sm font-bold leading-6 text-slate-900">{t.appTitle}</p>
-                    <p className="text-xs font-semibold leading-5 text-slate-700">{t.appSubtitle}</p>
-                    <p className="mt-1 text-[11px] font-bold text-slate-700">{t.invoice}: {order.order_number}</p>
-                  </div>
-                  <div className="flex w-[34%] flex-col items-center justify-center text-slate-800">
-                    <div className="text-[76px] font-black leading-[0.72] tracking-[-12px] text-slate-700">MZ</div>
-                    <p className="mt-3 text-[10px] font-medium tracking-wide text-slate-600">{t.appSubtitle}</p>
-                  </div>
-                  <div className="w-[31%] text-left">
-                    <div className="mb-3 inline-block bg-[#0c2f64] px-4 py-2 text-[10px] font-bold tracking-[0.18em] text-white" style={{ borderRadius: 0 }}>INVOICE</div>
-                    <h1 className="text-xl font-extrabold text-[#0c2f64]">{t.invoice}</h1>
-                    <p className="mt-2 text-[11px] font-bold text-blue-700">{order.order_number}</p>
-                    <p className="mt-1 text-[10px] text-slate-600">{t.invoiceDate}: {dateStr}</p>
-                  </div>
-                </div>
-              </header>
+          <div
+            ref={invoiceRef}
+            className="relative mx-auto flex w-[210mm] min-h-[297mm] flex-col justify-between overflow-hidden border border-gray-200 bg-white p-8 font-sans text-gray-800"
+            style={{ width: "794px", minHeight: "1123px", maxWidth: "100%", borderRadius: 0, pageBreakInside: "avoid" }}
+          >
+            <div className="absolute right-0 top-0 -z-0 h-48 w-48 rounded-full bg-blue-50 opacity-60 blur-2xl" />
+            <div className="absolute left-10 top-10 -z-0 h-32 w-32 rounded-full bg-blue-50 opacity-60 blur-xl" />
 
-              <main className="flex min-h-0 flex-1 flex-col px-9 py-5">
-                <div className="mb-5 grid shrink-0 grid-cols-2 gap-4">
-                  <section className="border border-slate-200 bg-[#f7faff] p-4 text-right" style={{ height: 106, borderRadius: 0 }}>
-                    <h2 className="mb-3 border-r-4 border-blue-500 pr-3 text-sm font-bold text-blue-700">{t.clientName}</h2>
-                    <p className="text-base font-extrabold text-slate-900">{order.client_name || "-"}</p>
-                    <p className="mt-2 text-[11px] text-slate-600">{t.clientPhone}: {order.client_phone}</p>
-                  </section>
-                  <section className="border border-slate-200 bg-[#f7faff] p-4 text-right" style={{ height: 106, borderRadius: 0 }}>
-                    <h2 className="mb-3 border-r-4 border-blue-500 pr-3 text-sm font-bold text-blue-700">{t.paymentMethod}</h2>
-                    <p className="text-base font-extrabold text-slate-900">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p>
-                    <p className="mt-2 text-[11px] text-slate-600">{t.invoiceDate}: {dateStr}</p>
-                  </section>
+            <div className="relative z-10">
+              <div className="mb-6 flex items-start justify-between border-b border-gray-100 pb-6">
+                <div className="text-right text-xs leading-relaxed text-gray-700">
+                  <h2 className="mb-1 text-sm font-bold text-gray-900">{companyName}</h2>
+                  <p><span className="font-semibold">رقم السجل التجاري:</span> 1559756</p>
+                  <p><span className="font-semibold">رمز بريدي:</span> 110</p>
                 </div>
 
-                <section className="mb-4 shrink-0" style={{ pageBreakInside: "avoid" }}>
-                  <div className="mb-2 flex items-end justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-blue-600">ORDER DETAILS</p>
-                      <h2 className="mt-1 text-lg font-extrabold text-slate-900">{t.product}</h2>
-                    </div>
-                    <span className="text-[11px] text-slate-500">{orderProducts.length} {t.invoiceQty}</span>
-                  </div>
-                  <table className="w-full border-collapse text-right" style={{ border: "1px solid #dfe6ef", tableLayout: "fixed" }}>
-                    <thead>
-                      <tr className="bg-[#0c2f64] text-white">
-                        <th style={{ width: "46%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceProduct}</th>
-                        <th style={{ width: "14%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceQty}</th>
-                        <th style={{ width: "20%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceUnitPrice}</th>
-                        <th style={{ width: "20%", padding: "11px 12px", fontSize: 12 }}>{t.invoiceLineTotal}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderProducts.length === 0 ? (
-                        <tr><td colSpan={4} className="text-center text-slate-400" style={{ padding: "12px", fontSize: 12 }}>-</td></tr>
-                      ) : orderProducts.map(({ product, qty, lineTotal }) => (
-                        <tr key={product.id} className="border-b border-slate-200 odd:bg-white even:bg-[#f7faff]">
-                          <td style={{ padding: "11px 12px", fontSize: 12 }}><p className="font-bold">{product.name_ar}</p><p className="mt-1 text-[10px] text-slate-500">{product.code} · {categoryLabels[product.category]?.[lang] || ""}</p></td>
-                          <td className="text-center" style={{ padding: "11px 12px", fontSize: 12 }}>{qty}</td>
-                          <td style={{ padding: "11px 12px", fontSize: 12 }}>{product.price.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</td>
-                          <td className="font-bold text-slate-900" style={{ padding: "11px 12px", fontSize: 12 }}>{lineTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-
-                <div className="grid min-h-0 flex-1 grid-cols-[1.35fr_0.9fr] gap-4" style={{ pageBreakInside: "avoid" }}>
-                  <section className="border border-blue-200 bg-[#f3f8ff] p-4 text-right" style={{ borderRadius: 0 }}>
-                    <h2 className="mb-3 border-r-4 border-blue-500 pr-3 text-base font-extrabold text-blue-800">{t.warrantyTerms}</h2>
-                    <div className="space-y-2 text-[10px] leading-[1.55] text-slate-700">
-                      {t.warrantyNote.split("\n").map((line, i) => <p key={i}>{line}</p>)}
-                    </div>
-                  </section>
-                  <section className="border border-slate-200 p-4 text-right" style={{ borderRadius: 0 }}>
-                    <h2 className="mb-4 border-r-4 border-blue-500 pr-3 text-base font-extrabold text-slate-900">{t.totalRevenue}</h2>
-                    <div className="space-y-3 text-[11px] text-slate-600">
-                      <div className="flex justify-between gap-3"><span>{t.totalRevenue}</span><strong>{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</strong></div>
-                      <div className="flex justify-between gap-3"><span>{t.paymentMethod}</span><strong>{order.payment_method === "bank" ? t.bankTransfer : t.cash}</strong></div>
-                    </div>
-                    <div className="mt-5 bg-[#0c2f64] p-5 text-white" style={{ borderRadius: 0 }}>
-                      <p className="text-[10px] font-semibold text-blue-100">{t.totalRevenue}</p>
-                      <p className="mt-2 text-2xl font-extrabold">{grandTotal.toFixed(3)} {lang === "ar" ? "ر.ع" : "OMR"}</p>
-                      <p className="mt-2 text-[10px] text-blue-100">{t.warranty}: {warrantyLabel}</p>
-                    </div>
-                  </section>
+                <div className="text-center">
+                  <div className="text-4xl font-black italic tracking-widest text-[#0f2942]">M<span className="text-gray-500">Z</span></div>
+                  <p className="mt-1 text-[10px] font-bold tracking-tight text-gray-600">{companySubtitle}</p>
+                  <p className="text-[8px] uppercase tracking-widest text-gray-400">GATE AUTOMATION</p>
                 </div>
-              </main>
 
-              <footer className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-[#f7faff] px-9 py-3 text-[10px] text-slate-600" style={{ height: 42, borderRadius: 0 }}>
-                <span>{t.appSubtitle}</span>
-                <strong className="text-[#0c2f64]">{t.appTitle}</strong>
-              </footer>
+                <div className="text-left">
+                  <span className="mb-2 inline-block rounded-sm bg-[#0f2942] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">INVOICE</span>
+                  <h3 className="text-lg font-bold text-gray-900">فاتورة / أمر عمل</h3>
+                  <p className="text-xs font-semibold text-blue-600">{order.order_number || "WO-202608-7666"}</p>
+                  <p className="mt-1 text-[10px] text-gray-500">التاريخ: {dateValue} - الوقت: {timeValue}</p>
+                </div>
+              </div>
+
+              <div className="mb-6 grid grid-cols-2 gap-4">
+                <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
+                  <div className="mb-2 flex items-center gap-2"><span className="inline-block h-3 w-1 bg-blue-500" /><h4 className="text-xs font-bold text-gray-500">بيانات العميل</h4></div>
+                  <p className="text-base font-bold text-gray-900">{order.client_name || "-"}</p>
+                  <p className="mt-1 text-xs text-gray-600" dir="ltr">{order.client_phone || "-"}</p>
+                </div>
+                <div className="rounded-sm border-r-4 border-[#0f2942] bg-gray-50/80 p-4">
+                  <div className="mb-2 flex items-center gap-2"><span className="inline-block h-3 w-1 bg-blue-500" /><h4 className="text-xs font-bold text-gray-500">ملخص العملية</h4></div>
+                  <div className="flex justify-between text-xs">
+                    <div><p className="text-[10px] text-gray-400">فترة الضمان</p><p className="font-bold text-gray-800">{warrantyLabel}</p></div>
+                    <div><p className="text-[10px] text-gray-400">طريقة الدفع</p><p className="font-bold text-gray-800">{order.payment_method === "bank" ? t.bankTransfer : t.cash}</p></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="mb-2 flex items-center justify-between"><h4 className="text-xs font-bold text-gray-700">تفاصيل المنتجات والخدمات</h4><span className="text-[10px] text-gray-400">{invoiceItems.length || 0} {itemCountLabel}</span></div>
+                <table className="w-full border-collapse text-right">
+                  <thead><tr className="bg-[#0f2942] text-xs text-white"><th className="p-3 font-semibold">المنتج / الخدمة</th><th className="p-3 text-center font-semibold">الكمية</th><th className="p-3 text-left font-semibold">سعر الوحدة</th><th className="p-3 text-left font-semibold">الإجمالي</th></tr></thead>
+                  <tbody className="divide-y divide-gray-100 border-b border-gray-100 text-xs">
+                    {invoiceItems.length > 0 ? invoiceItems.map((item, index) => (
+                      <tr key={`${item.code}-${index}`} className="hover:bg-gray-50/50"><td className="p-3"><p className="font-bold text-gray-900">{item.name}</p><p className="text-[10px] text-gray-400">{item.code}</p></td><td className="p-3 text-center font-medium">{item.qty}</td><td className="p-3 text-left font-medium">{item.unitPrice} {currency}</td><td className="p-3 text-left font-bold text-gray-900">{item.total} {currency}</td></tr>
+                    )) : <tr><td colSpan={4} className="p-3 text-center text-gray-400">-</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-12 items-start gap-6">
+                <div className="col-span-7 rounded border border-gray-100 bg-gray-50/50 p-4 text-[10px] leading-relaxed">
+                  <h5 className="mb-2 border-b border-gray-200 pb-1 text-xs font-bold text-gray-900">الضمان والشروط</h5>
+                  <ul className="list-inside list-disc space-y-1.5 text-gray-600"><li><strong className="text-gray-800">نطاق التغطية:</strong> يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.</li><li><strong className="text-gray-800">العوامل الجوية:</strong> لا يشمل الضمان الأعطال أو الأضرار الناتجة عن سوء الأحوال والعوامل الجوية.</li><li><strong className="text-gray-800">التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب أو ارتفاع وانخفاض التيار الكهربائي في الموقع.</li><li><strong className="text-gray-800">الهدية المجانية:</strong> لا يشمل الضمان جهاز الاتصال كونه هدية مجانية.</li></ul>
+                  <p className="mt-3 text-[9px] font-semibold text-gray-400">يرجى الاحتفاظ بهذه الفاتورة لإثبات الضمان والخدمة.</p>
+                </div>
+
+                <div className="col-span-5 space-y-2 text-xs">
+                  <h5 className="mb-2 border-b border-gray-200 pb-1 font-bold text-gray-900">ملخص المبلغ</h5>
+                  <div className="flex justify-between text-gray-600"><span>الإجمالي الفرعي:</span><span>{subtotal} {currency}</span></div>
+                  <div className="flex justify-between text-gray-600"><span>الضريبة / الخصم:</span><span>0.000 {currency}</span></div>
+                  <div className="flex justify-between border-t border-gray-100 pt-1 text-sm font-bold text-gray-900"><span>الإجمالي:</span><span>{subtotal} {currency}</span></div>
+                  <div className="mt-4 rounded bg-[#0f2942] p-4 text-center text-white"><p className="mb-1 text-[10px] text-gray-300">المبلغ المدفوع إجمالاً</p><p className="text-2xl font-black tracking-wide">{subtotal} {currency}</p><p className="mt-1 text-[9px] text-gray-400">المتبقي: 0.000 {currency}</p></div>
+                </div>
+              </div>
             </div>
+
+            <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-4 text-[10px] text-gray-500"><p className="font-medium">شكراً لثقتكم بنا</p><p className="font-semibold">MZ SMART - سلطنة عمان، محافظة جنوب الباطنة، الرميس</p></div>
           </div>
         </div>
 
-        {/* Progress bar / status */}
-        {sending && progressMsg && (
-          <div className="border-t border-blue-200 bg-blue-50 px-5 py-3">
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-              <span className="text-sm font-medium text-blue-700">{progressMsg}</span>
-            </div>
-          </div>
-        )}
-        {!sending && exported && (
-          <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3">
-            <div className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span>
-            </div>
-          </div>
-        )}
-        {sendError && (
-          <div className="border-t border-red-200 bg-red-50 px-5 py-3">
-            <span className="text-sm font-medium text-red-600">{sendError}</span>
-          </div>
-        )}
+        {sending && progressMsg && <div className="border-t border-blue-200 bg-blue-50 px-5 py-3"><div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /><span className="text-sm font-medium text-blue-700">{progressMsg}</span></div></div>}
+        {!sending && exported && <div className="border-t border-emerald-200 bg-emerald-50 px-5 py-3"><div className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-600" /><span className="text-sm font-medium text-emerald-700">{t.allSentSuccess}</span></div></div>}
+        {sendError && <div className="border-t border-red-200 bg-red-50 px-5 py-3"><span className="text-sm font-medium text-red-600">{sendError}</span></div>}
 
         <div className="flex gap-3 border-t border-slate-200 bg-white p-4">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50">
-            {t.cancel}
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting || sending}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-            title={t.downloadInvoice}
-          >
-            <Download className="h-5 w-5" />
-            <span className="hidden sm:inline">{t.downloadInvoice}</span>
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={exporting || sending}
-            className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
-          >
-            {sending ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-sm">{progressMsg || "..."}</span>
-              </>
-            ) : exported ? (
-              <>
-                <Check className="h-5 w-5" />
-                {t.allSentSuccess}
-              </>
-            ) : (
-              <>
-                <Send className="h-5 w-5" />
-                {t.sendToCustomer}
-              </>
-            )}
-          </button>
+          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50">{t.cancel}</button>
+          <button onClick={handleExport} disabled={exporting || sending} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50" title={t.downloadInvoice}><Download className="h-5 w-5" /><span className="hidden sm:inline">{t.downloadInvoice}</span></button>
+          <button onClick={handleSend} disabled={exporting || sending} className="flex flex-[1.5] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50">{sending ? <><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">{progressMsg || "..."}</span></> : exported ? <><Check className="h-5 w-5" />{t.allSentSuccess}</> : <><Send className="h-5 w-5" />{t.sendToCustomer}</>}</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between" style={{ padding: "4px 0" }}>
-      <span className="text-slate-400" style={{ fontSize: 12 }}>{label}</span>
-      <span className="font-medium text-slate-900" style={{ fontSize: 12 }}>{value}</span>
     </div>
   );
 }
