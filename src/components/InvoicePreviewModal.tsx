@@ -57,17 +57,16 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
   const warrantyLabel = warrantyOptions.find((option) => option.value === String(order.warranty_months))?.[
     lang === "ar" ? "label_ar" : "label_en"
   ] || (lang === "ar" ? "سنة" : "1 year");
-  const currency = lang === "ar" ? "ر.ع" : "OMR";
+  const currency = "ر.ع";
   const invoiceItems: InvoiceItem[] = orderProducts.map(({ product, qty, lineTotal }) => ({
     name: product.name_ar,
-    code: `${product.code} - ${categoryLabels[product.category]?.[lang] || ""}`,
+    code: `${product.code} · ${categoryLabels[product.category]?.[lang] || ""}`,
     qty,
     unitPrice: product.price.toFixed(3),
     total: lineTotal.toFixed(3),
   }));
   const subtotal = grandTotal.toFixed(3);
   const companyName = lang === "ar" ? "محمد الزغل الرائدة ش م م" : t.appTitle;
-  const companySubtitle = "Projects Mohammad Alzaghal Investment";
   const paymentMethodLabel = order.payment_method === "bank" ? t.bankTransfer : t.cash;
 
   const generatePdf = async (): Promise<{ file: File; fileName: string } | null> => {
@@ -219,99 +218,167 @@ export default function InvoicePreviewModal({ lang, t, order, products, onClose 
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div style={{ width: '100%', overflowX: 'auto', background: '#f3f4f6', padding: '20px' }}>
-            <div ref={invoiceRef} id="invoice-sheet" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', background: '#ffffff', margin: '0 auto', padding: '32px', boxSizing: 'border-box', direction: 'rtl', fontFamily: 'sans-serif' }}>
-              {/* HEADER */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e5e7eb', paddingBottom: '16px', marginBottom: '20px' }}>
-                <div style={{ textAlign: 'right', fontSize: '12px', color: '#374151', lineHeight: '1.6' }}>
-                  <strong style={{ fontSize: '14px', color: '#111827' }}>{companyName}</strong><br />
+          <div style={{ width: '100%', overflowX: 'auto', background: '#f3f4f6', padding: '20px 0', direction: 'rtl' }}>
+            <div
+              ref={invoiceRef}
+              id="invoice-sheet"
+              style={{
+                width: '210mm',
+                height: '297mm',
+                maxHeight: '297mm',
+                background: '#ffffff',
+                margin: '0 auto',
+                padding: '32px',
+                boxSizing: 'border-box',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                color: '#1f2937',
+                position: 'relative',
+                overflow: 'hidden',
+                direction: 'rtl',
+                WebkitFontSmoothing: 'antialiased',
+              }}
+            >
+              {/* HEADER SECTION */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #e5e7eb', paddingBottom: '14px', marginBottom: '18px' }}>
+                <div style={{ textAlign: 'right', fontSize: '11px', color: '#4b5563', lineHeight: '1.6', width: '32%' }}>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block', marginBottom: '2px' }}>{companyName}</strong>
                   رقم السجل التجاري: 1559756<br />
                   رمز بريدي: 110
                 </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: '900', color: '#0f2942', fontStyle: 'italic', letterSpacing: '2px' }}>
-                    M<span style={{ color: '#6b7280' }}>Z</span>
-                  </div>
-                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#4b5563' }}>{companySubtitle}</div>
-                  <div style={{ fontSize: '8px', color: '#9ca3af', letterSpacing: '2px' }}>GATE AUTOMATION</div>
+                <div style={{ textAlign: 'center', width: '36%' }}>
+                  <img src="/logo.png" alt="Logo" style={{ maxHeight: '75px', maxWidth: '100%', objectFit: 'contain' }} />
                 </div>
-                <div style={{ textAlign: 'left' }}>
-                  <span style={{ background: '#0f2942', color: '#ffffff', fontSize: '10px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '2px', display: 'inline-block', marginBottom: '6px' }}>INVOICE</span>
-                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#111827' }}>فاتورة / أمر عمل</div>
-                  <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'bold' }}>{order.order_number || "WO-202608-7666"}</div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>التاريخ: {dateValue} - الوقت: {timeValue}</div>
+                <div style={{ textAlign: 'left', width: '32%' }}>
+                  <span style={{ background: '#0f2942', color: '#ffffff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '2px', display: 'inline-block', marginBottom: '4px' }}>INVOICE</span>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#111827' }}>فاتورة / أمر عمل</div>
+                  <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'bold', marginTop: '2px' }}>{order.order_number || "WO-202608-7666"}</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>التاريخ: {dateValue} &nbsp;·&nbsp; الوقت: {timeValue}</div>
                 </div>
               </div>
 
-              {/* CARDS */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ background: '#f9fafb', padding: '16px', borderRight: '4px solid #0f2942', borderRadius: '2px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#2563eb', marginBottom: '4px' }}>| بيانات العميل</div>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827' }}>{order.client_name || "-"}</div>
-                  <div style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px' }} dir="ltr">{order.client_phone || "-"}</div>
+              {/* CUSTOMER & SUMMARY CARDS */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '18px' }}>
+                <div style={{ background: '#f9fafb', padding: '12px', borderRight: '4px solid #0f2942', borderRadius: '2px' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#2563eb', marginBottom: '4px' }}>بيانات العميل</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>{order.client_name || "-"}</div>
+                  <div style={{ fontSize: '11.5px', color: '#4b5563', marginTop: '3px' }} dir="ltr">هاتف: {order.client_phone || "-"}</div>
                 </div>
-                <div style={{ background: '#f9fafb', padding: '16px', borderRight: '4px solid #0f2942', borderRadius: '2px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#2563eb', marginBottom: '4px' }}>| ملخص العملية</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '8px' }}>
-                    <div><span style={{ color: '#9ca3af', fontSize: '10px', display: 'block' }}>فترة الضمان</span><strong>{warrantyLabel}</strong></div>
-                    <div><span style={{ color: '#9ca3af', fontSize: '10px', display: 'block' }}>طريقة الدفع</span><strong>{paymentMethodLabel}</strong></div>
+                <div style={{ background: '#f9fafb', padding: '12px', borderRight: '4px solid #0f2942', borderRadius: '2px' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#2563eb', marginBottom: '4px' }}>ملخص العملية</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
+                    <div>
+                      <span style={{ color: '#6b7280', fontSize: '9.5px', display: 'block' }}>طريقة الدفع</span>
+                      <strong style={{ color: '#111827' }}>{paymentMethodLabel}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#6b7280', fontSize: '9.5px', display: 'block' }}>فترة الضمان</span>
+                      <strong style={{ color: '#111827' }}>{warrantyLabel}</strong>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* TABLE */}
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>تفاصيل المنتجات والخدمات</div>
+              {/* PRODUCTS TABLE */}
+              <div style={{ marginBottom: '18px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#374151', marginBottom: '6px' }}>
+                  ORDER DETAILS &nbsp; <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: '10px' }}>تفاصيل المنتجات والخدمات</span>
+                </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                   <thead>
-                    <tr style={{ background: '#0f2942', color: '#ffffff', fontSize: '12px' }}>
-                      <th style={{ padding: '10px' }}>المنتج / الخدمة</th>
-                      <th style={{ padding: '10px', textAlign: 'center' }}>الكمية</th>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>سعر الوحدة</th>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>الإجمالي</th>
+                    <tr style={{ background: '#0f2942', color: '#ffffff', fontSize: '10.5px' }}>
+                      <th style={{ padding: '7px 10px' }}>المنتج / الخدمة</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'center' }}>الكمية</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left' }}>سعر الوحدة</th>
+                      <th style={{ padding: '7px 10px', textAlign: 'left' }}>الإجمالي</th>
                     </tr>
                   </thead>
-                  <tbody style={{ fontSize: '12px', color: '#374151' }}>
-                    {invoiceItems.length > 0 ? invoiceItems.map((item, index) => (
-                      <tr key={`${item.code}-${index}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '10px' }}><strong>{item.name}</strong><br /><span style={{ fontSize: '10px', color: '#9ca3af' }}>{item.code}</span></td>
-                        <td style={{ padding: '10px', textAlign: 'center' }}>{item.qty}</td>
-                        <td style={{ padding: '10px', textAlign: 'left' }}>{item.unitPrice} {currency}</td>
-                        <td style={{ padding: '10px', textAlign: 'left' }}><strong>{item.total} {currency}</strong></td>
+                  <tbody style={{ fontSize: '10.5px', color: '#374151' }}>
+                    {invoiceItems.length > 0 ? invoiceItems.map((item, idx) => (
+                      <tr key={`${item.code}-${idx}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '8px 10px' }}>
+                          <strong style={{ color: '#111827', display: 'block' }}>{item.name}</strong>
+                          <span style={{ fontSize: '8.5px', color: '#6b7280' }}>{item.code}</span>
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>{item.qty}</td>
+                        <td style={{ padding: '8px 10px', textAlign: 'left' }}>{item.unitPrice} {currency}</td>
+                        <td style={{ padding: '8px 10px', textAlign: 'left' }}><strong>{item.total} {currency}</strong></td>
                       </tr>
                     )) : (
                       <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td colSpan={4} style={{ padding: '10px', textAlign: 'center', color: '#9ca3af' }}>-</td>
+                        <td colSpan={4} style={{ padding: '8px 10px', textAlign: 'center', color: '#9ca3af' }}>-</td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* BOTTOM */}
-              <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: '16px', alignItems: 'start' }}>
-                <div style={{ background: '#f9fafb', padding: '12px', fontSize: '10px', color: '#4b5563', borderRadius: '2px', lineHeight: '1.6' }}>
-                  <strong style={{ fontSize: '11px', color: '#111827', display: 'block', marginBottom: '6px' }}>الضمان والشروط</strong>
-                  <ul style={{ paddingRight: '14px', margin: 0 }}>
+              {/* TERMS & TOTALS */}
+              <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: '14px', alignItems: 'start', marginBottom: '20px' }}>
+                <div style={{ background: '#f9fafb', padding: '10px', fontSize: '9.5px', color: '#4b5563', borderRadius: '2px', lineHeight: '1.5' }}>
+                  <strong style={{ fontSize: '10.5px', color: '#111827', display: 'block', marginBottom: '4px' }}>الضمان والشروط</strong>
+                  <ul style={{ paddingRight: '12px', margin: 0 }}>
                     <li><strong>نطاق التغطية:</strong> يغطي الضمان العيوب التصنيعية للأجهزة والأعطال الفنية الناتجة عن عملية التركيب فقط.</li>
-                    <li><strong>العوامل الجوية:</strong> لا يشمل الضمان الأعطال الناتجة عن سوء الأحوال الجوية.</li>
-                    <li><strong>التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب التيار الكهربائي.</li>
+                    <li><strong>العوامل الجوية:</strong> لا يشمل الضمان الأعطال أو الأضرار الناتجة عن سوء الأحوال والعوامل الجوية.</li>
+                    <li><strong>التيار الكهربائي:</strong> لا يشمل الضمان الأعطال الناتجة عن تذبذب أو ارتفاع وانخفاض التيار الكهربائي في الموقع.</li>
                     <li><strong>الهدية المجانية:</strong> لا يشمل الضمان جهاز الاتصال كونه هدية مجانية.</li>
                   </ul>
                 </div>
-                <div style={{ fontSize: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>الإجمالي الفرعي:</span><span>{subtotal} {currency}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>الضريبة / الخصم:</span><span>0.000 {currency}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #e5e7eb', paddingTop: '4px', marginBottom: '12px' }}><span>الإجمالي:</span><span>{subtotal} {currency}</span></div>
-                  <div style={{ background: '#0f2942', color: '#ffffff', padding: '12px', textAlign: 'center', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '10px', color: '#d1d5db' }}>المبلغ المدفوع إجماللاً</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', margin: '4px 0' }}>{subtotal} {currency}</div>
-                    <div style={{ fontSize: '9px', color: '#9ca3af' }}>المتبقي: 0.000 {currency}</div>
+                <div style={{ fontSize: '10.5px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#374151', marginBottom: '6px' }}>ملخص المبلغ</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <span style={{ color: '#6b7280' }}>الإجمالي الفرعي</span>
+                    <span>{subtotal} {currency}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <span style={{ color: '#6b7280' }}>الضريبة / الخصم</span>
+                    <span>0.000 {currency}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', padding: '5px 0', color: '#111827' }}>
+                    <span>الإجمالي</span>
+                    <span>{subtotal} {currency}</span>
+                  </div>
+                  <div style={{ background: '#0f2942', color: '#ffffff', padding: '10px', textAlign: 'center', borderRadius: '2px', marginTop: '6px' }}>
+                    <div style={{ fontSize: '9.5px', color: '#d1d5db' }}>المبلغ المدفوع إجماللاً</div>
+                    <div style={{ fontSize: '17px', fontWeight: 'bold', margin: '2px 0' }}>{subtotal} {currency}</div>
+                    <div style={{ fontSize: '8.5px', color: '#9ca3af' }}>المتبقي: 0.000 {currency}</div>
                   </div>
                 </div>
               </div>
+
+              {/* FOOTER */}
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', color: '#6b7280', position: 'absolute', bottom: '20px', left: '32px', right: '32px' }}>
+                <div>شكراً لثقتكم بنا</div>
+                <div><strong>SMART MZ</strong> · سلطنة عمان، محافظة جنوب الباطنة، الرميس</div>
+              </div>
             </div>
           </div>
+          <style>{`
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            @media print {
+              body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              #invoice-sheet {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                padding: 32px !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                transform: scale(1) !important;
+              }
+            }
+          `}</style>
         </div>
 
         {sending && progressMsg && (
